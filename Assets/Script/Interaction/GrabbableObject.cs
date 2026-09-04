@@ -36,6 +36,7 @@ namespace AsadoSimulator.Interaction
         [Header("Events")]
         public UnityEvent onGrabbed;
         public UnityEvent onDropped;
+        public event Action<GrabbableObject> OnGrabbedAction;
 
         // Cached physics references & states
         private Rigidbody _rigidbody;
@@ -57,6 +58,19 @@ namespace AsadoSimulator.Interaction
         {
             _rigidbody = GetComponent<Rigidbody>();
             _colliders = GetComponentsInChildren<Collider>();
+
+            if (_rigidbody != null)
+            {
+                _cachedUseGravity = _rigidbody.useGravity;
+                _cachedLinearDamping = _rigidbody.linearDamping;
+                _cachedAngularDamping = _rigidbody.angularDamping;
+                _cachedCollisionMode = _rigidbody.collisionDetectionMode;
+                _cachedInterpolation = _rigidbody.interpolation;
+            }
+            else
+            {
+                _cachedUseGravity = true;
+            }
 
             ValidateTag();
         }
@@ -118,16 +132,21 @@ namespace AsadoSimulator.Interaction
             _cachedInterpolation = _rigidbody.interpolation;
 
             // Configure physics for stable holding (Interpolate ensures silky-smooth rendering)
+            _rigidbody.isKinematic = false;
             _rigidbody.useGravity = false;
             _rigidbody.linearDamping = heldDamping;
             _rigidbody.angularDamping = heldDamping;
             _rigidbody.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
             _rigidbody.interpolation = RigidbodyInterpolation.Interpolate;
 
+            // Turn off trigger mode on grab so the held object is solid
+            SetCollidersTrigger(false);
+
             // Ignore collision with player so held object doesn't push the player
             IgnorePlayerCollision(true);
 
             onGrabbed?.Invoke();
+            OnGrabbedAction?.Invoke(this);
         }
 
         /// <summary>
@@ -139,12 +158,16 @@ namespace AsadoSimulator.Interaction
 
             IsGrabbed = false;
 
-            // Restore physics states
-            _rigidbody.useGravity = _cachedUseGravity;
+            // Restore physics states (always dynamic with gravity and solid collision)
+            _rigidbody.isKinematic = false;
+            _rigidbody.useGravity = true;
             _rigidbody.linearDamping = _cachedLinearDamping;
             _rigidbody.angularDamping = _cachedAngularDamping;
-            _rigidbody.collisionDetectionMode = _cachedCollisionMode;
+            _rigidbody.collisionDetectionMode = (_cachedCollisionMode != 0) ? _cachedCollisionMode : CollisionDetectionMode.Discrete;
             _rigidbody.interpolation = _cachedInterpolation;
+
+            // Ensure colliders remain solid
+            SetCollidersTrigger(false);
 
             // Restore player collision
             IgnorePlayerCollision(false);
@@ -174,6 +197,47 @@ namespace AsadoSimulator.Interaction
             if (IsGrabbed)
             {
                 OnDrop(Vector3.zero);
+            }
+        }
+
+        /// <summary>
+        /// Resets the grabbable object to its initial ungrabbed state.
+        /// Useful when cloning or respawning food items.
+        /// </summary>
+        public void ResetGrabState()
+        {
+            IsGrabbed = false;
+            if (_rigidbody != null)
+            {
+                _rigidbody.useGravity = true;
+                _rigidbody.isKinematic = false;
+                _rigidbody.linearDamping = _cachedLinearDamping;
+                _rigidbody.angularDamping = _cachedAngularDamping;
+                _rigidbody.collisionDetectionMode = (_cachedCollisionMode != 0) ? _cachedCollisionMode : CollisionDetectionMode.Discrete;
+                _rigidbody.interpolation = _cachedInterpolation;
+                _rigidbody.linearVelocity = Vector3.zero;
+                _rigidbody.angularVelocity = Vector3.zero;
+            }
+            IgnorePlayerCollision(false);
+            _playerCollider = null;
+        }
+
+        /// <summary>
+        /// Sets all colliders on this object and its children to trigger mode or solid mode.
+        /// </summary>
+        public void SetCollidersTrigger(bool isTrigger)
+        {
+            if (_colliders == null || _colliders.Length == 0)
+            {
+                _colliders = GetComponentsInChildren<Collider>(true);
+            }
+
+            for (int i = 0; i < _colliders.Length; i++)
+            {
+                if (_colliders[i] != null)
+                {
+                    _colliders[i].isTrigger = isTrigger;
+                }
             }
         }
     }

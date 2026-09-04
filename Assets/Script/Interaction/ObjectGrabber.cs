@@ -216,11 +216,42 @@ namespace AsadoSimulator.Interaction
 
             if (playerCamera == null || IsHoldingObject) return;
 
-            Ray ray = new Ray(playerCamera.transform.position, playerCamera.transform.forward);
-            if (Physics.Raycast(ray, out RaycastHit hit, grabRange, grabLayerMask, QueryTriggerInteraction.Ignore))
+            if (RaycastForGrabbable(out _))
             {
-                IsAimingAtGrabbable = IsTargetGrabbable(hit.collider.gameObject);
+                IsAimingAtGrabbable = true;
             }
+        }
+
+        private bool RaycastForGrabbable(out RaycastHit bestHit)
+        {
+            bestHit = default;
+            if (playerCamera == null) return false;
+
+            Ray ray = new Ray(playerCamera.transform.position, playerCamera.transform.forward);
+            RaycastHit[] hits = Physics.RaycastAll(ray, grabRange, grabLayerMask, QueryTriggerInteraction.Collide);
+            if (hits == null || hits.Length == 0) return false;
+
+            Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+
+            for (int i = 0; i < hits.Length; i++)
+            {
+                var h = hits[i];
+                if (h.collider == null || h.collider == playerCollider) continue;
+
+                if (IsTargetGrabbable(h.collider.gameObject))
+                {
+                    bestHit = h;
+                    return true;
+                }
+
+                // If blocked by a solid obstacle (not a trigger), block line of sight
+                if (!h.collider.isTrigger)
+                {
+                    return false;
+                }
+            }
+
+            return false;
         }
 
         private bool IsTargetGrabbable(GameObject target)
@@ -301,8 +332,7 @@ namespace AsadoSimulator.Interaction
         {
             if (playerCamera == null) return;
 
-            Ray ray = new Ray(playerCamera.transform.position, playerCamera.transform.forward);
-            if (!Physics.Raycast(ray, out RaycastHit hit, grabRange, grabLayerMask, QueryTriggerInteraction.Ignore)) return;
+            if (!RaycastForGrabbable(out RaycastHit hit)) return;
 
             GameObject hitObject = hit.collider.gameObject;
             if (!IsTargetGrabbable(hitObject)) return;

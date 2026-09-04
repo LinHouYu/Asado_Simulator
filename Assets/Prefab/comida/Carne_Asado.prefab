@@ -14,15 +14,15 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: e19d69fed3a17c647a3e0f49d95831c3, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 0.56639385
+      value: 1.416
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: e19d69fed3a17c647a3e0f49d95831c3, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 1.622
+      value: 1.441
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: e19d69fed3a17c647a3e0f49d95831c3, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 3.924
+      value: 3.804
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: e19d69fed3a17c647a3e0f49d95831c3, type: 3}
       propertyPath: m_LocalRotation.w
@@ -406,6 +406,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: e19d69fed3a17c647a3e0f49d95831c3, type: 3}
       insertIndex: -1
       addedObject: {fileID: 3611933096833248818}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: e19d69fed3a17c647a3e0f49d95831c3, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 2145454972291144566}
   m_SourcePrefab: {fileID: 100100000, guid: e19d69fed3a17c647a3e0f49d95831c3, type: 3}
 --- !u!1 &3199005939270292067 stripped
 GameObject:
@@ -460,3 +463,27 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 0.8966164, y: 0.08252561, z: 0.1384368}
   m_Center: {x: -0.000036090612, y: 0.08069545, z: -0.0079193115}
+--- !u!114 &2145454972291144566
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3199005939270292067}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4a8f92c1075b486ea32f1846b0123456, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AsadoSimulator.Interaction.GrabbableObject
+  requiredTag: Grabbable
+  enforceTag: 1
+  customHoldDistance: -1
+  trackCameraRotation: 1
+  heldDamping: 10
+  customCenterOffset: {x: 0, y: 0, z: 0}
+  onGrabbed:
+    m_PersistentCalls:
+      m_Calls: []
+  onDropped:
+    m_PersistentCalls:
+      m_Calls: []

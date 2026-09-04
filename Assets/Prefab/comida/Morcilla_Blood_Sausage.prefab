@@ -10,27 +10,27 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: -8679921383154817045, guid: b46bf4d78d5ad304d8f34a03e1e26dc6, type: 3}
       propertyPath: m_LocalScale.x
-      value: 0.28890666
+      value: 0.3
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: b46bf4d78d5ad304d8f34a03e1e26dc6, type: 3}
       propertyPath: m_LocalScale.y
-      value: 0.45342478
+      value: 0.3
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: b46bf4d78d5ad304d8f34a03e1e26dc6, type: 3}
       propertyPath: m_LocalScale.z
-      value: 0.4122287
+      value: 0.3
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: b46bf4d78d5ad304d8f34a03e1e26dc6, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 0.012496
+      value: 1.366
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: b46bf4d78d5ad304d8f34a03e1e26dc6, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 1.5285
+      value: 1.4602306
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: b46bf4d78d5ad304d8f34a03e1e26dc6, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 3.572
+      value: 3.534
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: b46bf4d78d5ad304d8f34a03e1e26dc6, type: 3}
       propertyPath: m_LocalRotation.w
@@ -42,11 +42,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: b46bf4d78d5ad304d8f34a03e1e26dc6, type: 3}
       propertyPath: m_LocalRotation.y
-      value: -0
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: b46bf4d78d5ad304d8f34a03e1e26dc6, type: 3}
       propertyPath: m_LocalRotation.z
-      value: -0
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: b46bf4d78d5ad304d8f34a03e1e26dc6, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
@@ -152,6 +152,7 @@ MonoBehaviour:
   customHoldDistance: -1
   trackCameraRotation: 1
   heldDamping: 10
+  customCenterOffset: {x: 0, y: 0, z: 0}
   onGrabbed:
     m_PersistentCalls:
       m_Calls: []

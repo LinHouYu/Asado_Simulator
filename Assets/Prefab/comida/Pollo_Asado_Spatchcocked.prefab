@@ -9,8 +9,20 @@ PrefabInstance:
     m_TransformParent: {fileID: 0}
     m_Modifications:
     - target: {fileID: -8679921383154817045, guid: 5e9a9b01a52cff04e8f7ac119b0a7178, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 0.3
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 5e9a9b01a52cff04e8f7ac119b0a7178, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 0.4
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 5e9a9b01a52cff04e8f7ac119b0a7178, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 0.3
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 5e9a9b01a52cff04e8f7ac119b0a7178, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 0.8391642
+      value: 0.92
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 5e9a9b01a52cff04e8f7ac119b0a7178, type: 3}
       propertyPath: m_LocalPosition.y
@@ -18,7 +30,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 5e9a9b01a52cff04e8f7ac119b0a7178, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 3.3194144
+      value: 3.442
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 5e9a9b01a52cff04e8f7ac119b0a7178, type: 3}
       propertyPath: m_LocalRotation.w
@@ -52,8 +64,98 @@ PrefabInstance:
       propertyPath: m_Name
       value: Pollo_Asado_Spatchcocked
       objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 5e9a9b01a52cff04e8f7ac119b0a7178, type: 3}
+      propertyPath: m_TagString
+      value: Grabbable
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 5e9a9b01a52cff04e8f7ac119b0a7178, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 8892553932521536460}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 5e9a9b01a52cff04e8f7ac119b0a7178, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 4826561878887254950}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 5e9a9b01a52cff04e8f7ac119b0a7178, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 6613360625284930652}
   m_SourcePrefab: {fileID: 100100000, guid: 5e9a9b01a52cff04e8f7ac119b0a7178, type: 3}
+--- !u!1 &1071946627691708526 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 5e9a9b01a52cff04e8f7ac119b0a7178, type: 3}
+  m_PrefabInstance: {fileID: 153465532361948479}
+  m_PrefabAsset: {fileID: 0}
+--- !u!54 &8892553932521536460
+Rigidbody:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1071946627691708526}
+  serializedVersion: 5
+  m_Mass: 1
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
+  m_CenterOfMass: {x: 0, y: 0, z: 0}
+  m_InertiaTensor: {x: 1, y: 1, z: 1}
+  m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ImplicitCom: 1
+  m_ImplicitTensor: 1
+  m_UseGravity: 1
+  m_IsKinematic: 0
+  m_Interpolate: 0
+  m_Constraints: 0
+  m_CollisionDetection: 0
+--- !u!65 &4826561878887254950
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1071946627691708526}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 1.1950006, y: 0.18613994, z: 1.2530751}
+  m_Center: {x: -0.6552708, y: 0.15767056, z: 0.8714814}
+--- !u!114 &6613360625284930652
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1071946627691708526}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4a8f92c1075b486ea32f1846b0123456, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AsadoSimulator.Interaction.GrabbableObject
+  requiredTag: Grabbable
+  enforceTag: 1
+  customHoldDistance: -1
+  trackCameraRotation: 1
+  heldDamping: 10
+  customCenterOffset: {x: 0, y: 0, z: 0}
+  onGrabbed:
+    m_PersistentCalls:
+      m_Calls: []
+  onDropped:
+    m_PersistentCalls:
+      m_Calls: []
