@@ -1,0 +1,8 @@
+# Made in Blockbench 5.1.6
+newmtl m_8e24ed2d-0513-e321-d8e6-054696cb648e
+map_Kd dark_meat.png
+newmtl m_e26a5dcd-991c-0129-05a9-77c0dffff507
+map_Kd base_meat.png
+newmtl m_38301d3a-125a-a650-e43b-4a5cf8432d0b
+map_Kd fat_spot.png
+newmtl none

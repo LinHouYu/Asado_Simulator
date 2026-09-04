@@ -41,6 +41,7 @@ namespace AsadoSimulator.Interaction
         private float _cachedLinearDamping;
         private float _cachedAngularDamping;
         private CollisionDetectionMode _cachedCollisionMode;
+        private RigidbodyInterpolation _cachedInterpolation;
 
         public bool IsGrabbed { get; private set; }
         public string RequiredTag => requiredTag;
@@ -110,12 +111,14 @@ namespace AsadoSimulator.Interaction
             _cachedLinearDamping = _rigidbody.linearDamping;
             _cachedAngularDamping = _rigidbody.angularDamping;
             _cachedCollisionMode = _rigidbody.collisionDetectionMode;
+            _cachedInterpolation = _rigidbody.interpolation;
 
-            // Configure physics for stable holding
+            // Configure physics for stable holding (Interpolate ensures silky-smooth rendering)
             _rigidbody.useGravity = false;
             _rigidbody.linearDamping = heldDamping;
             _rigidbody.angularDamping = heldDamping;
             _rigidbody.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
+            _rigidbody.interpolation = RigidbodyInterpolation.Interpolate;
 
             // Ignore collision with player so held object doesn't push the player
             IgnorePlayerCollision(true);
@@ -137,6 +140,7 @@ namespace AsadoSimulator.Interaction
             _rigidbody.linearDamping = _cachedLinearDamping;
             _rigidbody.angularDamping = _cachedAngularDamping;
             _rigidbody.collisionDetectionMode = _cachedCollisionMode;
+            _rigidbody.interpolation = _cachedInterpolation;
 
             // Restore player collision
             IgnorePlayerCollision(false);
