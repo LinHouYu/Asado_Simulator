@@ -1,0 +1,8 @@
+# Made in Blockbench 5.1.6
+newmtl m_2a3abc27-0910-dc46-b3eb-b05051fc01ca
+map_Kd shadow_base.png
+newmtl m_4e86e4c4-f9e0-b855-f1c6-df1c99574dd6
+map_Kd dark_blood.png
+newmtl m_513e82e2-75f7-e722-5bc9-9c7ee6fcb0e1
+map_Kd white_fat.png
+newmtl none
