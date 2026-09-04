@@ -170,14 +170,16 @@ namespace AsadoSimulator.Interaction
             _previewLineRenderer.positionCount = 2;
             _previewLineRenderer.enabled = false;
 
-            // Setup landing circle marker on tables/floors
-            _landingMarkerObj = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            _landingMarkerObj.name = "LandingMarker";
+            // Setup landing circle marker on tables/floors (pure visual mesh, zero collider)
+            _landingMarkerObj = new GameObject("LandingMarker");
             _landingMarkerObj.transform.SetParent(transform);
-            Destroy(_landingMarkerObj.GetComponent<Collider>());
+            var meshFilter = _landingMarkerObj.AddComponent<MeshFilter>();
+            var tempPrimitive = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            meshFilter.sharedMesh = tempPrimitive.GetComponent<MeshFilter>().sharedMesh;
+            DestroyImmediate(tempPrimitive);
 
             _landingMarkerObj.transform.localScale = new Vector3(0.35f, 0.002f, 0.35f);
-            _landingMarkerRenderer = _landingMarkerObj.GetComponent<MeshRenderer>();
+            _landingMarkerRenderer = _landingMarkerObj.AddComponent<MeshRenderer>();
             _landingMarkerRenderer.material = new Material(Shader.Find("Sprites/Default"));
             _landingMarkerRenderer.material.color = landingMarkerColor;
             _landingMarkerObj.SetActive(false);
@@ -324,27 +326,29 @@ namespace AsadoSimulator.Interaction
                 return;
             }
 
-            // Measure object bounding size for anti-penetration sweep
+            // 1. Calculate true world collider center directly from the object's real colliders
+            Vector3 initialColliderCenter = GetRealColliderCenterWorld(_heldRigidbody);
+
+            // Measure object bounding radius from the colliders in world space
             _heldColliders = _heldRigidbody.GetComponentsInChildren<Collider>();
-            Bounds bounds = new Bounds(_heldRigidbody.position, Vector3.zero);
+            Bounds bounds = new Bounds(initialColliderCenter, Vector3.zero);
             foreach (var col in _heldColliders)
             {
-                if (col.enabled) bounds.Encapsulate(col.bounds);
+                if (col != null && col.enabled && !col.isTrigger) bounds.Encapsulate(col.bounds);
             }
-            _heldObjectRadius = Mathf.Clamp(bounds.extents.magnitude * 0.5f, 0.1f, 0.5f);
+            _heldObjectRadius = Mathf.Clamp(bounds.extents.magnitude * 0.5f, 0.05f, 0.8f);
 
-            // 1. Initial Pickup Lift-Off: Lift position slightly along surface normal to clear table
-            Vector3 initialPos = _heldRigidbody.position;
+            // Initial Pickup Lift-Off: Anchored from the real collider center
             if (hit.normal.y > 0.3f)
             {
-                initialPos += Vector3.up * pickupLiftOffset;
+                initialColliderCenter += Vector3.up * pickupLiftOffset;
             }
 
             // 2. Smooth Pickup setup
             _isPickupSmoothing = true;
             _pickupTimer = 0f;
-            _pickupStartWorldPos = initialPos;
-            _smoothedHoldTargetPos = initialPos;
+            _pickupStartWorldPos = initialColliderCenter;
+            _smoothedHoldTargetPos = initialColliderCenter;
             _posSmoothVelocity = Vector3.zero;
             _velSmoothVelocity = Vector3.zero;
             _currentSmoothedDistance = _currentHoldDistance;
@@ -378,6 +382,37 @@ namespace AsadoSimulator.Interaction
             _isPickupSmoothing = false;
 
             HidePlacementPreview();
+        }
+
+        /// <summary>
+        /// Gets the true geometric center of all active colliders on the Rigidbody in WORLD space.
+        /// Automatically accounts for all child transforms, parent/root scales, and collider center offsets.
+        /// </summary>
+        private Vector3 GetRealColliderCenterWorld(Rigidbody rb)
+        {
+            if (rb == null) return Vector3.zero;
+
+            Collider[] colliders = rb.GetComponentsInChildren<Collider>();
+            Bounds combinedBounds = new Bounds();
+            bool hasBounds = false;
+
+            for (int i = 0; i < colliders.Length; i++)
+            {
+                var col = colliders[i];
+                if (col == null || !col.enabled || !col.gameObject.activeInHierarchy || col.isTrigger) continue;
+
+                if (!hasBounds)
+                {
+                    combinedBounds = col.bounds;
+                    hasBounds = true;
+                }
+                else
+                {
+                    combinedBounds.Encapsulate(col.bounds);
+                }
+            }
+
+            return hasBounds ? combinedBounds.center : rb.position;
         }
 
         #endregion
@@ -460,20 +495,29 @@ namespace AsadoSimulator.Interaction
         {
             if (!IsHoldingObject) return;
 
-            // 1. Break Distance Check (if stuck behind solid obstacle)
-            Vector3 displacement = _smoothedHoldTargetPos - _heldRigidbody.position;
+            Quaternion targetRot = Quaternion.Euler(0f, _currentYaw, 0f);
+
+            // Directly query the true geometric center of the object's colliders in world space
+            Vector3 currentColliderCenter = GetRealColliderCenterWorld(_heldRigidbody);
+
+            // 1. Break Distance Check (measured directly from true collider center to crosshair target)
+            Vector3 displacement = _smoothedHoldTargetPos - currentColliderCenter;
             if (displacement.sqrMagnitude > breakDistance * breakDistance)
             {
                 DropObject();
                 return;
             }
 
-            // 2. Apply Smooth Spring Velocity (Using Unity 6 linearVelocity + SmoothDamp)
+            // 2. Apply Smooth Spring Velocity directly tracking collider center to crosshair target
             Vector3 desiredVelocity = displacement * holdSpringForce;
-            _heldRigidbody.linearVelocity = Vector3.SmoothDamp(_heldRigidbody.linearVelocity, Vector3.ClampMagnitude(desiredVelocity, maxHoldSpeed), ref _velSmoothVelocity, 0.02f);
+            _heldRigidbody.linearVelocity = Vector3.SmoothDamp(
+                _heldRigidbody.linearVelocity,
+                Vector3.ClampMagnitude(desiredVelocity, maxHoldSpeed),
+                ref _velSmoothVelocity,
+                0.02f
+            );
 
-            // 3. Apply Smooth Rotation (MoveRotation ensures zero angular jitter with Interpolate enabled)
-            Quaternion targetRot = Quaternion.Euler(0f, _currentYaw, 0f);
+            // 3. Apply Smooth Rotation
             _heldRigidbody.MoveRotation(targetRot);
         }
 
@@ -489,7 +533,8 @@ namespace AsadoSimulator.Interaction
                 return;
             }
 
-            Vector3 rayStart = _heldRigidbody.position;
+            // Drop ray originates from the true center of the collider in world space
+            Vector3 rayStart = GetRealColliderCenterWorld(_heldRigidbody);
             Ray dropRay = new Ray(rayStart, Vector3.down);
 
             if (Physics.Raycast(dropRay, out RaycastHit hit, maxPreviewDropDistance, obstacleLayerMask, QueryTriggerInteraction.Ignore))

@@ -29,6 +29,10 @@ namespace AsadoSimulator.Interaction
         [Tooltip("Multiplier for linear damping while held to prevent swinging.")]
         [SerializeField] private float heldDamping = 10f;
 
+        [Tooltip("Optional custom grab center offset in local space. If Vector3.zero, automatically calculates collider center.")]
+        [SerializeField] private Vector3 customCenterOffset = Vector3.zero;
+        public Vector3 CustomCenterOffset => customCenterOffset;
+
         [Header("Events")]
         public UnityEvent onGrabbed;
         public UnityEvent onDropped;
