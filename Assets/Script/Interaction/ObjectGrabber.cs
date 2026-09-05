@@ -64,32 +64,26 @@ namespace AsadoSimulator.Interaction
         [Tooltip("Distance threshold at which the hold automatically breaks.")]
         [SerializeField] private float breakDistance = 2.4f;
 
-        [Header("Table Anti-Embedding & Jitter Prevention")]
-        [Tooltip("Vertical lift applied on initial grab to cleanly clear table surfaces.")]
-        [SerializeField] private float pickupLiftOffset = 0.08f;
-
-        [Tooltip("Minimum clearance above surfaces beneath the held object.")]
-        [SerializeField] private float surfaceClearancePadding = 0.05f;
-
-        [Tooltip("Layers treated as solid obstacles (tables, counters, walls).")]
+        [Header("Obstacle Layers")]
+        [Tooltip("Layers treated as solid obstacles for landing marker.")]
         [SerializeField] private LayerMask obstacleLayerMask = ~0;
 
         [Header("Rotation Settings (R Key)")]
         [Tooltip("Speed in degrees per second for rotating the held object around Y axis.")]
         [SerializeField] private float rKeyRotateSpeed = 135f;
 
-        [Header("Placement Preview Ray")]
-        [Tooltip("Whether to display the drop landing preview ray and marker.")]
+        [Header("Placement Preview (Landing Red Dot)")]
+        [Tooltip("Whether to display the drop landing preview red dot on colliders below.")]
         [SerializeField] private bool showPlacementPreview = true;
 
         [Tooltip("Maximum downward raycast distance for landing preview.")]
         [SerializeField] private float maxPreviewDropDistance = 4f;
 
-        [Tooltip("Color of the drop preview ray.")]
-        [SerializeField] private Color previewRayColor = new Color(0.2f, 0.85f, 1f, 0.7f);
+        [Tooltip("Color of the landing target dot (Default: Red).")]
+        [SerializeField] private Color landingMarkerColor = new Color(1f, 0.1f, 0.1f, 0.95f);
 
-        [Tooltip("Color of the landing target circle.")]
-        [SerializeField] private Color landingMarkerColor = new Color(0.2f, 0.95f, 0.9f, 0.85f);
+        [Tooltip("Size/Diameter of the landing red dot marker in meters.")]
+        [SerializeField] private float landingMarkerSize = 0.05f;
 
         // State Tracking
         private Rigidbody _heldRigidbody;
@@ -120,9 +114,12 @@ namespace AsadoSimulator.Interaction
         private float _fallbackCachedAngularDamping;
         private CollisionDetectionMode _fallbackCachedCollisionMode;
         private RigidbodyInterpolation _fallbackCachedInterpolation;
+        private float _fallbackCachedMaxDepenetration;
+        private float _fallbackCachedMaxAngularVelocity;
+        private int _fallbackCachedSolverIterations;
+        private int _fallbackCachedSolverVelocityIterations;
 
-        // Placement Preview Components
-        private LineRenderer _previewLineRenderer;
+        // Placement Preview Components (Small Red Dot on Collider)
         private GameObject _landingMarkerObj;
         private MeshRenderer _landingMarkerRenderer;
 
@@ -158,29 +155,19 @@ namespace AsadoSimulator.Interaction
 
         private void SetupPlacementPreviewVisuals()
         {
-            // Setup LineRenderer for the drop ray
-            GameObject lineObj = new GameObject("DropPreviewLine");
-            lineObj.transform.SetParent(transform);
-            _previewLineRenderer = lineObj.AddComponent<LineRenderer>();
-            _previewLineRenderer.startWidth = 0.015f;
-            _previewLineRenderer.endWidth = 0.015f;
-            _previewLineRenderer.material = new Material(Shader.Find("Sprites/Default"));
-            _previewLineRenderer.startColor = previewRayColor;
-            _previewLineRenderer.endColor = previewRayColor;
-            _previewLineRenderer.positionCount = 2;
-            _previewLineRenderer.enabled = false;
-
-            // Setup landing circle marker on tables/floors (pure visual mesh, zero collider)
-            _landingMarkerObj = new GameObject("LandingMarker");
+            // Setup small landing red dot marker on collider surfaces (pure visual mesh, zero collider)
+            _landingMarkerObj = new GameObject("LandingMarkerDot");
             _landingMarkerObj.transform.SetParent(transform);
             var meshFilter = _landingMarkerObj.AddComponent<MeshFilter>();
             var tempPrimitive = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             meshFilter.sharedMesh = tempPrimitive.GetComponent<MeshFilter>().sharedMesh;
             DestroyImmediate(tempPrimitive);
 
-            _landingMarkerObj.transform.localScale = new Vector3(0.35f, 0.002f, 0.35f);
+            _landingMarkerObj.transform.localScale = new Vector3(landingMarkerSize, 0.001f, landingMarkerSize);
             _landingMarkerRenderer = _landingMarkerObj.AddComponent<MeshRenderer>();
-            _landingMarkerRenderer.material = new Material(Shader.Find("Sprites/Default"));
+            Shader dotShader = Shader.Find("Universal Render Pipeline/Unlit");
+            if (dotShader == null) dotShader = Shader.Find("Sprites/Default");
+            _landingMarkerRenderer.material = new Material(dotShader);
             _landingMarkerRenderer.material.color = landingMarkerColor;
             _landingMarkerObj.SetActive(false);
         }
@@ -258,14 +245,14 @@ namespace AsadoSimulator.Interaction
         {
             if (target == null) return false;
 
-            if (target.TryGetComponent<GrabbableObject>(out var grabbable))
+            if (target.TryGetComponent<GrabbableObject>(out var grabbable) || (grabbable = target.GetComponentInParent<GrabbableObject>()) != null)
             {
                 return !requireTagMatch || grabbable.CanGrabWithTag(targetTag);
             }
 
-            if (target.TryGetComponent<Rigidbody>(out _))
+            if (target.TryGetComponent<Rigidbody>(out var rb) || (rb = target.GetComponentInParent<Rigidbody>()) != null)
             {
-                return !requireTagMatch || SafeCompareTag(target, targetTag);
+                return !requireTagMatch || SafeCompareTag(target, targetTag) || SafeCompareTag(rb.gameObject, targetTag);
             }
 
             return false;
@@ -337,18 +324,22 @@ namespace AsadoSimulator.Interaction
             GameObject hitObject = hit.collider.gameObject;
             if (!IsTargetGrabbable(hitObject)) return;
 
-            if (hitObject.TryGetComponent<GrabbableObject>(out var grabbable))
+            if (hitObject.TryGetComponent<GrabbableObject>(out var grabbable) || (grabbable = hitObject.GetComponentInParent<GrabbableObject>()) != null)
             {
                 _heldGrabbable = grabbable;
-                _heldRigidbody = grabbable.Rigidbody;
-                _currentHoldDistance = grabbable.CustomHoldDistance > 0f ? grabbable.CustomHoldDistance : defaultHoldDistance;
+                _heldRigidbody = grabbable.Rigidbody != null ? grabbable.Rigidbody : grabbable.GetComponent<Rigidbody>();
+                if (_heldRigidbody == null) _heldRigidbody = grabbable.GetComponentInParent<Rigidbody>();
+                if (_heldRigidbody == null) return;
+
+                float rawDist = grabbable.CustomHoldDistance > 0f ? grabbable.CustomHoldDistance : defaultHoldDistance;
+                _currentHoldDistance = Mathf.Max(minHoldDistance, rawDist);
                 _heldGrabbable.OnGrab(playerCollider);
             }
-            else if (hitObject.TryGetComponent<Rigidbody>(out var rb))
+            else if (hitObject.TryGetComponent<Rigidbody>(out var rb) || (rb = hitObject.GetComponentInParent<Rigidbody>()) != null)
             {
                 _heldGrabbable = null;
                 _heldRigidbody = rb;
-                _currentHoldDistance = defaultHoldDistance;
+                _currentHoldDistance = Mathf.Max(minHoldDistance, defaultHoldDistance);
                 SetupFallbackGrabPhysics(rb);
             }
             else
@@ -356,25 +347,24 @@ namespace AsadoSimulator.Interaction
                 return;
             }
 
+            if (_heldRigidbody == null) return;
+
             // 1. Calculate true world collider center directly from the object's real colliders
             Vector3 initialColliderCenter = GetRealColliderCenterWorld(_heldRigidbody);
 
             // Measure object bounding radius from the colliders in world space
             _heldColliders = _heldRigidbody.GetComponentsInChildren<Collider>();
             Bounds bounds = new Bounds(initialColliderCenter, Vector3.zero);
-            foreach (var col in _heldColliders)
+            if (_heldColliders != null)
             {
-                if (col != null && col.enabled && !col.isTrigger) bounds.Encapsulate(col.bounds);
+                foreach (var col in _heldColliders)
+                {
+                    if (col != null && col.enabled && !col.isTrigger) bounds.Encapsulate(col.bounds);
+                }
             }
             _heldObjectRadius = Mathf.Clamp(bounds.extents.magnitude * 0.5f, 0.05f, 0.8f);
 
-            // Initial Pickup Lift-Off: Anchored from the real collider center
-            if (hit.normal.y > 0.3f)
-            {
-                initialColliderCenter += Vector3.up * pickupLiftOffset;
-            }
-
-            // 2. Smooth Pickup setup
+            // 2. Smooth Pickup setup: start directly from the object's true collider center
             _isPickupSmoothing = true;
             _pickupTimer = 0f;
             _pickupStartWorldPos = initialColliderCenter;
@@ -459,40 +449,9 @@ namespace AsadoSimulator.Interaction
             Vector3 camPos = playerCamera.transform.position;
             Vector3 camForward = playerCamera.transform.forward;
 
-            // 1. Anti-Embedding Sweep: dynamically shorten hold distance if looking at a table or wall
-            float targetDistance = _currentHoldDistance;
-            Ray sweepRay = new Ray(camPos, camForward);
-            if (Physics.SphereCast(sweepRay, _heldObjectRadius * 0.75f, out RaycastHit obstacleHit, _currentHoldDistance, obstacleLayerMask, QueryTriggerInteraction.Ignore))
-            {
-                if (obstacleHit.collider.gameObject != _heldRigidbody.gameObject &&
-                    obstacleHit.collider != playerCollider &&
-                    !obstacleHit.collider.transform.IsChildOf(_heldRigidbody.transform))
-                {
-                    float safeDist = obstacleHit.distance - surfaceClearancePadding;
-                    targetDistance = Mathf.Max(minHoldDistance, safeDist);
-                }
-            }
-
-            // Smooth distance changes so crosshair distance never snaps abruptly
-            _currentSmoothedDistance = Mathf.Lerp(_currentSmoothedDistance, targetDistance, Time.deltaTime * 14f);
-
-            Vector3 idealTargetPos = camPos + camForward * _currentSmoothedDistance;
-
-            // 2. Downward Table Clearance: keep object comfortably above horizontal surfaces
-            Ray downCheck = new Ray(idealTargetPos + Vector3.up * 0.25f, Vector3.down);
-            if (Physics.Raycast(downCheck, out RaycastHit tableHit, 0.5f, obstacleLayerMask, QueryTriggerInteraction.Ignore))
-            {
-                if (tableHit.collider.gameObject != _heldRigidbody.gameObject &&
-                    tableHit.collider != playerCollider &&
-                    !tableHit.collider.transform.IsChildOf(_heldRigidbody.transform))
-                {
-                    float minAllowedY = tableHit.point.y + _heldObjectRadius + surfaceClearancePadding;
-                    if (idealTargetPos.y < minAllowedY)
-                    {
-                        idealTargetPos.y = Mathf.Lerp(idealTargetPos.y, minAllowedY, Time.deltaTime * 18f);
-                    }
-                }
-            }
+            // Target position is held directly at the crosshair center coordinate at designated hold distance
+            // No surrounding sweep or ground push, preventing jitter/jumping in narrow spaces like grills
+            Vector3 idealTargetPos = camPos + camForward * _currentHoldDistance;
 
             // 3. Smooth Pickup Interpolation
             Vector3 rawAnchorPos = idealTargetPos;
@@ -516,21 +475,33 @@ namespace AsadoSimulator.Interaction
             // 5. Smooth Yaw Rotation (eliminates angular judder while turning camera or pressing R)
             float desiredYaw = playerCamera.transform.eulerAngles.y + _heldYAngleOffset;
             _currentYaw = Mathf.SmoothDampAngle(_currentYaw, desiredYaw, ref _yawSmoothVelocity, rotateSmoothTime);
+
+            // Prevent target yaw from winding up endlessly if physical obstacle blocks rotation
+            if (_heldRigidbody != null)
+            {
+                float currentPhysYaw = _heldRigidbody.rotation.eulerAngles.y;
+                float angleLag = Mathf.DeltaAngle(currentPhysYaw, _currentYaw);
+                if (Mathf.Abs(angleLag) > 40f)
+                {
+                    float clampedYaw = currentPhysYaw + Mathf.Sign(angleLag) * 40f;
+                    _currentYaw = clampedYaw;
+                    _heldYAngleOffset = Mathf.DeltaAngle(playerCamera.transform.eulerAngles.y, clampedYaw);
+                }
+            }
         }
 
         /// <summary>
         /// Runs in FixedUpdate() to apply physics forces and collision checks.
+        /// Uses PD Force and Torque to ensure realistic collision constraint solving with zero jitter.
         /// </summary>
         private void UpdateHeldObjectPhysics()
         {
-            if (!IsHoldingObject) return;
+            if (!IsHoldingObject || _heldRigidbody == null) return;
 
-            Quaternion targetRot = Quaternion.Euler(0f, _currentYaw, 0f);
-
-            // Directly query the true geometric center of the object's colliders in world space
+            // Query the true geometric center of all colliders in world space
             Vector3 currentColliderCenter = GetRealColliderCenterWorld(_heldRigidbody);
 
-            // 1. Break Distance Check (measured directly from true collider center to crosshair target)
+            // 1. Break Distance Check (measured from true collider center to crosshair target)
             Vector3 displacement = _smoothedHoldTargetPos - currentColliderCenter;
             if (displacement.sqrMagnitude > breakDistance * breakDistance)
             {
@@ -538,22 +509,38 @@ namespace AsadoSimulator.Interaction
                 return;
             }
 
-            // 2. Apply Smooth Spring Velocity directly tracking collider center to crosshair target
-            Vector3 desiredVelocity = displacement * holdSpringForce;
-            _heldRigidbody.linearVelocity = Vector3.SmoothDamp(
-                _heldRigidbody.linearVelocity,
-                Vector3.ClampMagnitude(desiredVelocity, maxHoldSpeed),
-                ref _velSmoothVelocity,
-                0.02f
-            );
+            // 2. Physics PD Linear Acceleration (Participates in PhysX collision solver; cancels out cleanly on collision surfaces)
+            Vector3 desiredVelocity = Vector3.ClampMagnitude(displacement * holdSpringForce, maxHoldSpeed);
+            Vector3 currentVelocity = _heldRigidbody.linearVelocity;
+            Vector3 linearAccel = (desiredVelocity - currentVelocity) / 0.035f;
+            linearAccel = Vector3.ClampMagnitude(linearAccel, 140f);
+            _heldRigidbody.AddForce(linearAccel, ForceMode.Acceleration);
 
-            // 3. Apply Smooth Rotation
-            _heldRigidbody.MoveRotation(targetRot);
+            // 3. Physics Torque Rotation (Rotates around center of mass; stops naturally at obstacles without violent penetration)
+            Quaternion targetRot = Quaternion.Euler(0f, _currentYaw, 0f);
+            Quaternion deltaRot = targetRot * Quaternion.Inverse(_heldRigidbody.rotation);
+            deltaRot.ToAngleAxis(out float angleInDegrees, out Vector3 axis);
+            if (angleInDegrees > 180f) angleInDegrees -= 360f;
+
+            if (!float.IsNaN(axis.x) && !float.IsInfinity(axis.x) && axis.sqrMagnitude > 0.001f && Mathf.Abs(angleInDegrees) > 0.05f)
+            {
+                float targetRadSpeed = Mathf.Clamp(angleInDegrees * Mathf.Deg2Rad * 18f, -12f, 12f);
+                Vector3 targetAngVel = axis.normalized * targetRadSpeed;
+                Vector3 angAccel = (targetAngVel - _heldRigidbody.angularVelocity) / 0.04f;
+                angAccel = Vector3.ClampMagnitude(angAccel, 160f);
+                _heldRigidbody.AddTorque(angAccel, ForceMode.Acceleration);
+            }
+            else
+            {
+                Vector3 angDamp = -_heldRigidbody.angularVelocity * 15f;
+                angDamp = Vector3.ClampMagnitude(angDamp, 120f);
+                _heldRigidbody.AddTorque(angDamp, ForceMode.Acceleration);
+            }
         }
 
         #endregion
 
-        #region Placement Preview Ray
+        #region Placement Preview (Landing Red Dot)
 
         private void UpdatePlacementPreview()
         {
@@ -563,22 +550,34 @@ namespace AsadoSimulator.Interaction
                 return;
             }
 
-            // Drop ray originates from the true center of the collider in world space
-            Vector3 rayStart = GetRealColliderCenterWorld(_heldRigidbody);
+            // Drop ray originates from the bottom of the held object's colliders
+            Vector3 center = GetRealColliderCenterWorld(_heldRigidbody);
+            float bottomY = center.y;
+            if (_heldColliders != null)
+            {
+                for (int i = 0; i < _heldColliders.Length; i++)
+                {
+                    var c = _heldColliders[i];
+                    if (c != null && c.enabled && !c.isTrigger)
+                    {
+                        bottomY = Mathf.Min(bottomY, c.bounds.min.y);
+                    }
+                }
+            }
+
+            Vector3 rayStart = new Vector3(center.x, bottomY - 0.005f, center.z);
             Ray dropRay = new Ray(rayStart, Vector3.down);
 
+            // Cast downward to hit solid physics Colliders (ignoring Triggers)
             if (Physics.Raycast(dropRay, out RaycastHit hit, maxPreviewDropDistance, obstacleLayerMask, QueryTriggerInteraction.Ignore))
             {
                 if (hit.collider.gameObject != _heldRigidbody.gameObject &&
                     hit.collider != playerCollider &&
                     !hit.collider.transform.IsChildOf(_heldRigidbody.transform))
                 {
-                    _previewLineRenderer.enabled = true;
-                    _previewLineRenderer.SetPosition(0, rayStart);
-                    _previewLineRenderer.SetPosition(1, hit.point);
-
                     _landingMarkerObj.SetActive(true);
-                    _landingMarkerObj.transform.position = hit.point + hit.normal * 0.005f;
+                    // Place red dot directly on collider surface with slight offset along normal to prevent Z-fighting
+                    _landingMarkerObj.transform.position = hit.point + hit.normal * 0.002f;
                     _landingMarkerObj.transform.rotation = Quaternion.FromToRotation(Vector3.up, hit.normal);
                     return;
                 }
@@ -589,7 +588,6 @@ namespace AsadoSimulator.Interaction
 
         private void HidePlacementPreview()
         {
-            if (_previewLineRenderer != null) _previewLineRenderer.enabled = false;
             if (_landingMarkerObj != null) _landingMarkerObj.SetActive(false);
         }
 
@@ -604,12 +602,20 @@ namespace AsadoSimulator.Interaction
             _fallbackCachedAngularDamping = rb.angularDamping;
             _fallbackCachedCollisionMode = rb.collisionDetectionMode;
             _fallbackCachedInterpolation = rb.interpolation;
+            _fallbackCachedMaxDepenetration = rb.maxDepenetrationVelocity;
+            _fallbackCachedMaxAngularVelocity = rb.maxAngularVelocity;
+            _fallbackCachedSolverIterations = rb.solverIterations;
+            _fallbackCachedSolverVelocityIterations = rb.solverVelocityIterations;
 
             rb.useGravity = false;
             rb.linearDamping = 10f;
             rb.angularDamping = 10f;
             rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
             rb.interpolation = RigidbodyInterpolation.Interpolate; // Essential for smooth movement!
+            rb.maxDepenetrationVelocity = 1.5f; // Suppresses explosive flinging
+            rb.maxAngularVelocity = 15f;
+            rb.solverIterations = 14;
+            rb.solverVelocityIterations = 6;
 
             if (playerCollider != null)
             {
@@ -630,7 +636,12 @@ namespace AsadoSimulator.Interaction
             _heldRigidbody.angularDamping = _fallbackCachedAngularDamping;
             _heldRigidbody.collisionDetectionMode = _fallbackCachedCollisionMode;
             _heldRigidbody.interpolation = _fallbackCachedInterpolation;
+            _heldRigidbody.maxDepenetrationVelocity = Mathf.Min(_fallbackCachedMaxDepenetration > 0f ? _fallbackCachedMaxDepenetration : 3.0f, 3.0f);
+            _heldRigidbody.maxAngularVelocity = _fallbackCachedMaxAngularVelocity > 0f ? _fallbackCachedMaxAngularVelocity : 7.0f;
+            _heldRigidbody.solverIterations = (_fallbackCachedSolverIterations > 0) ? _fallbackCachedSolverIterations : 6;
+            _heldRigidbody.solverVelocityIterations = (_fallbackCachedSolverVelocityIterations > 0) ? _fallbackCachedSolverVelocityIterations : 1;
             _heldRigidbody.linearVelocity = Vector3.ClampMagnitude(releaseVelocity, 3.5f);
+            _heldRigidbody.angularVelocity = Vector3.ClampMagnitude(_heldRigidbody.angularVelocity, 5.0f);
 
             if (playerCollider != null)
             {
@@ -646,10 +657,6 @@ namespace AsadoSimulator.Interaction
 
         private void OnDestroy()
         {
-            if (_previewLineRenderer != null && _previewLineRenderer.gameObject != null)
-            {
-                Destroy(_previewLineRenderer.gameObject);
-            }
             if (_landingMarkerObj != null)
             {
                 Destroy(_landingMarkerObj);

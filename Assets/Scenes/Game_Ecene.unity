@@ -936,7 +936,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: -5.95366, y: 0, z: -15.13037}
-  m_LocalScale: {x: 10, y: 1, z: 10}
+  m_LocalScale: {x: 15, y: 1, z: 10}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1472950769}
@@ -1392,16 +1392,14 @@ MonoBehaviour:
   holdSpringForce: 20
   maxHoldSpeed: 10
   breakDistance: 2.4
-  pickupLiftOffset: 0.08
-  surfaceClearancePadding: 0.05
   obstacleLayerMask:
     serializedVersion: 2
     m_Bits: 4294967295
   rKeyRotateSpeed: 135
   showPlacementPreview: 1
   maxPreviewDropDistance: 4
-  previewRayColor: {r: 0.2, g: 0.85, b: 1, a: 0.7}
-  landingMarkerColor: {r: 0.2, g: 0.95, b: 0.9, a: 0.85}
+  landingMarkerColor: {r: 1, g: 0.1, b: 0.1, a: 0.95}
+  landingMarkerSize: 0.05
 --- !u!1 &1127230976
 GameObject:
   m_ObjectHideFlags: 0
@@ -2385,6 +2383,63 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1001 &5530759688576880297
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 93328222402952618, guid: 9ef78e4064d79b040a9bd36ed6e5669c, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 4.963
+      objectReference: {fileID: 0}
+    - target: {fileID: 93328222402952618, guid: 9ef78e4064d79b040a9bd36ed6e5669c, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0.906
+      objectReference: {fileID: 0}
+    - target: {fileID: 93328222402952618, guid: 9ef78e4064d79b040a9bd36ed6e5669c, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 3.939
+      objectReference: {fileID: 0}
+    - target: {fileID: 93328222402952618, guid: 9ef78e4064d79b040a9bd36ed6e5669c, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 93328222402952618, guid: 9ef78e4064d79b040a9bd36ed6e5669c, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 93328222402952618, guid: 9ef78e4064d79b040a9bd36ed6e5669c, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 93328222402952618, guid: 9ef78e4064d79b040a9bd36ed6e5669c, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 93328222402952618, guid: 9ef78e4064d79b040a9bd36ed6e5669c, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 93328222402952618, guid: 9ef78e4064d79b040a9bd36ed6e5669c, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 93328222402952618, guid: 9ef78e4064d79b040a9bd36ed6e5669c, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 720647591396173584, guid: 9ef78e4064d79b040a9bd36ed6e5669c, type: 3}
+      propertyPath: m_Name
+      value: Brasero
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 9ef78e4064d79b040a9bd36ed6e5669c, type: 3}
 --- !u!1001 &6307864565027058586
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -2685,3 +2740,4 @@ SceneRoots:
   - {fileID: 372152225}
   - {fileID: 369060851}
   - {fileID: 2114969117}
+  - {fileID: 5530759688576880297}

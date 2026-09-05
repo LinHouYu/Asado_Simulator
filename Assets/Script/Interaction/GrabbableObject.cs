@@ -47,6 +47,10 @@ namespace AsadoSimulator.Interaction
         private float _cachedAngularDamping;
         private CollisionDetectionMode _cachedCollisionMode;
         private RigidbodyInterpolation _cachedInterpolation;
+        private float _cachedMaxDepenetrationVelocity;
+        private float _cachedMaxAngularVelocity;
+        private int _cachedSolverIterations;
+        private int _cachedSolverVelocityIterations;
 
         public bool IsGrabbed { get; private set; }
         public string RequiredTag => requiredTag;
@@ -66,6 +70,10 @@ namespace AsadoSimulator.Interaction
                 _cachedAngularDamping = _rigidbody.angularDamping;
                 _cachedCollisionMode = _rigidbody.collisionDetectionMode;
                 _cachedInterpolation = _rigidbody.interpolation;
+                _cachedMaxDepenetrationVelocity = _rigidbody.maxDepenetrationVelocity;
+                _cachedMaxAngularVelocity = _rigidbody.maxAngularVelocity;
+                _cachedSolverIterations = _rigidbody.solverIterations;
+                _cachedSolverVelocityIterations = _rigidbody.solverVelocityIterations;
             }
             else
             {
@@ -138,6 +146,10 @@ namespace AsadoSimulator.Interaction
             _rigidbody.angularDamping = heldDamping;
             _rigidbody.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
             _rigidbody.interpolation = RigidbodyInterpolation.Interpolate;
+            _rigidbody.maxDepenetrationVelocity = 1.5f; // Critical: suppresses explosive depenetration flinging
+            _rigidbody.maxAngularVelocity = 15f; // Prevents wild spinning
+            _rigidbody.solverIterations = 14; // High precision contact solver
+            _rigidbody.solverVelocityIterations = 6;
 
             // Turn off trigger mode on grab so the held object is solid
             SetCollidersTrigger(false);
@@ -165,6 +177,10 @@ namespace AsadoSimulator.Interaction
             _rigidbody.angularDamping = _cachedAngularDamping;
             _rigidbody.collisionDetectionMode = (_cachedCollisionMode != 0) ? _cachedCollisionMode : CollisionDetectionMode.Discrete;
             _rigidbody.interpolation = _cachedInterpolation;
+            _rigidbody.maxDepenetrationVelocity = Mathf.Min(_cachedMaxDepenetrationVelocity > 0f ? _cachedMaxDepenetrationVelocity : 3.0f, 3.0f);
+            _rigidbody.maxAngularVelocity = _cachedMaxAngularVelocity > 0f ? _cachedMaxAngularVelocity : 7.0f;
+            _rigidbody.solverIterations = (_cachedSolverIterations > 0) ? _cachedSolverIterations : 6;
+            _rigidbody.solverVelocityIterations = (_cachedSolverVelocityIterations > 0) ? _cachedSolverVelocityIterations : 1;
 
             // Ensure colliders remain solid
             SetCollidersTrigger(false);
@@ -174,7 +190,8 @@ namespace AsadoSimulator.Interaction
             _playerCollider = null;
 
             // Apply smooth release velocity (clamped to avoid prop launch glitches)
-            _rigidbody.linearVelocity = Vector3.ClampMagnitude(releaseLinearVelocity, 4.0f);
+            _rigidbody.linearVelocity = Vector3.ClampMagnitude(releaseLinearVelocity, 3.5f);
+            _rigidbody.angularVelocity = Vector3.ClampMagnitude(_rigidbody.angularVelocity, 5.0f);
 
             onDropped?.Invoke();
         }
