@@ -81,6 +81,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: b46bf4d78d5ad304d8f34a03e1e26dc6, type: 3}
       insertIndex: -1
       addedObject: {fileID: 2477867971890394060}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: b46bf4d78d5ad304d8f34a03e1e26dc6, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 2353422484243280964}
   m_SourcePrefab: {fileID: 100100000, guid: b46bf4d78d5ad304d8f34a03e1e26dc6, type: 3}
 --- !u!1 &5093844639222468849 stripped
 GameObject:
@@ -157,5 +160,36 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls: []
   onDropped:
+    m_PersistentCalls:
+      m_Calls: []
+--- !u!114 &2353422484243280964
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5093844639222468849}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0860b52e8e5aca840855f0a9bcb1d654, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AsadoSimulator.Cooking.Meat
+  cookProgress: 0
+  cookSpeed: 0.05
+  meatRenderer: {fileID: 0}
+  rawColor: {r: 0.85, g: 0.22, b: 0.22, a: 1}
+  cookedColor: {r: 0.55, g: 0.3, b: 0.1, a: 1}
+  burntColor: {r: 0.12, g: 0.12, b: 0.12, a: 1}
+  usePropertyBlock: 1
+  cookSlider: {fileID: 0}
+  sliderCanvas: {fileID: 0}
+  autoHideUI: 1
+  onCookProgressChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  onPerfectCooked:
+    m_PersistentCalls:
+      m_Calls: []
+  onBurnt:
     m_PersistentCalls:
       m_Calls: []

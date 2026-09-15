@@ -105,12 +105,20 @@ namespace AsadoSimulator.Interaction
             if (string.IsNullOrEmpty(tagToCheck)) return true;
             try
             {
-                return CompareTag(tagToCheck);
+                if (CompareTag(tagToCheck)) return true;
             }
             catch
             {
-                return gameObject.tag == tagToCheck;
+                if (gameObject.tag == tagToCheck) return true;
             }
+
+            // 兼容 Meat 组件：如果检查的是 Grabbable 或 Meat，只要挂了 Meat 均视为通过
+            if ((tagToCheck == "Grabbable" || tagToCheck == "Meat") && GetComponent<Cooking.Meat>() != null)
+            {
+                return true;
+            }
+
+            return false;
         }
 
         /// <summary>
@@ -119,7 +127,7 @@ namespace AsadoSimulator.Interaction
         public bool CanGrabWithTag(string tagFilter)
         {
             if (string.IsNullOrEmpty(tagFilter)) return true;
-            return MatchesTag(tagFilter) || MatchesTag(requiredTag);
+            return MatchesTag(tagFilter) || MatchesTag(requiredTag) || MatchesTag("Meat") || GetComponent<Cooking.Meat>() != null;
         }
 
         /// <summary>

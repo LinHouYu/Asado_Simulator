@@ -52,6 +52,9 @@ namespace AsadoSimulator.Cooking
         [SerializeField] private bool usePropertyBlock = true;
 
         [Header("UI 显示配置")]
+        [Tooltip("如果未手动指定 Canvas 和 Slider，是否在肉块头顶自动生成小巧的熟度进度条 UI")]
+        [SerializeField] private bool autoCreateUIIfMissing = true;
+
         [Tooltip("显示熟度进度的 Slider")]
         [SerializeField] private Slider cookSlider;
 
@@ -62,7 +65,6 @@ namespace AsadoSimulator.Cooking
         [SerializeField] private bool autoHideUI = true;
 
         [Header("事件回调 (可选)")]
-        [Tooltip("熟度进度更新时触发 (传递 0.0 ~ 1.0)")]
         public UnityEvent<float> onCookProgressChanged;
 
         [Tooltip("达到完美烤熟时触发 (约 0.5 时)")]
@@ -114,6 +116,7 @@ namespace AsadoSimulator.Cooking
             }
 
             FindMainCamera();
+            EnsureUI();
             InitializeUI();
             UpdateMeatAppearance(cookProgress);
         }
@@ -154,6 +157,92 @@ namespace AsadoSimulator.Cooking
                     _mainCamera = FindAnyObjectByType<Camera>();
                 }
             }
+        }
+
+        private void EnsureUI()
+        {
+            if (sliderCanvas == null)
+            {
+                sliderCanvas = GetComponentInChildren<Canvas>(true);
+            }
+            if (cookSlider == null)
+            {
+                cookSlider = GetComponentInChildren<Slider>(true);
+            }
+
+            // 如果预制体上未手动绑定 Canvas/Slider，自动在肉块上方动态构建精巧的 World Space Slider
+            if ((sliderCanvas == null || cookSlider == null) && autoCreateUIIfMissing)
+            {
+                CreateDefaultWorldSpaceUI();
+            }
+        }
+
+        private void CreateDefaultWorldSpaceUI()
+        {
+            // 1. 创建 Canvas 物体
+            GameObject canvasObj = new GameObject("[Auto] MeatCanvas");
+            canvasObj.transform.SetParent(transform, false);
+
+            float topOffset = 0.2f;
+            if (meatRenderer != null)
+            {
+                topOffset = Mathf.Max(0.12f, meatRenderer.bounds.extents.y + 0.08f);
+            }
+            canvasObj.transform.localPosition = new Vector3(0f, topOffset, 0f);
+            canvasObj.transform.localRotation = Quaternion.identity;
+            canvasObj.transform.localScale = new Vector3(0.003f, 0.003f, 0.003f);
+
+            sliderCanvas = canvasObj.AddComponent<Canvas>();
+            sliderCanvas.renderMode = RenderMode.WorldSpace;
+            var rect = canvasObj.GetComponent<RectTransform>();
+            rect.sizeDelta = new Vector2(100f, 16f);
+            rect.pivot = new Vector2(0.5f, 0.5f);
+
+            // 2. 创建 Slider 物体
+            GameObject sliderObj = new GameObject("Slider");
+            sliderObj.transform.SetParent(canvasObj.transform, false);
+            var sliderRt = sliderObj.AddComponent<RectTransform>();
+            sliderRt.anchorMin = Vector2.zero;
+            sliderRt.anchorMax = Vector2.one;
+            sliderRt.sizeDelta = Vector2.zero;
+            sliderRt.anchoredPosition = Vector2.zero;
+
+            cookSlider = sliderObj.AddComponent<Slider>();
+            cookSlider.interactable = false;
+            cookSlider.transition = Selectable.Transition.None;
+            cookSlider.minValue = 0f;
+            cookSlider.maxValue = 1f;
+            cookSlider.value = cookProgress;
+
+            // 3. 背景底色 (暗黑透明)
+            GameObject bgObj = new GameObject("Background");
+            bgObj.transform.SetParent(sliderObj.transform, false);
+            var bgRt = bgObj.AddComponent<RectTransform>();
+            bgRt.anchorMin = Vector2.zero;
+            bgRt.anchorMax = Vector2.one;
+            bgRt.sizeDelta = Vector2.zero;
+            var bgImage = bgObj.AddComponent<Image>();
+            bgImage.color = new Color(0.12f, 0.12f, 0.12f, 0.85f);
+
+            // 4. Fill Area & Fill (金黄色进度条)
+            GameObject fillArea = new GameObject("Fill Area");
+            fillArea.transform.SetParent(sliderObj.transform, false);
+            var faRt = fillArea.AddComponent<RectTransform>();
+            faRt.anchorMin = Vector2.zero;
+            faRt.anchorMax = Vector2.one;
+            faRt.sizeDelta = new Vector2(-4f, -4f);
+
+            GameObject fillObj = new GameObject("Fill");
+            fillObj.transform.SetParent(fillArea.transform, false);
+            var fillRt = fillObj.AddComponent<RectTransform>();
+            fillRt.anchorMin = Vector2.zero;
+            fillRt.anchorMax = new Vector2(0f, 1f);
+            fillRt.sizeDelta = Vector2.zero;
+            var fillImage = fillObj.AddComponent<Image>();
+            fillImage.color = new Color(1.0f, 0.72f, 0.18f, 1.0f);
+
+            cookSlider.fillRect = fillRt;
+            cookSlider.targetGraphic = fillImage;
         }
 
         private void InitializeUI()
