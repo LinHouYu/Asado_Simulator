@@ -112,8 +112,8 @@ namespace AsadoSimulator.Interaction
                 if (gameObject.tag == tagToCheck) return true;
             }
 
-            // 兼容 Meat 组件：如果检查的是 Grabbable 或 Meat，只要挂了 Meat 均视为通过
-            if ((tagToCheck == "Grabbable" || tagToCheck == "Meat") && GetComponent<Cooking.Meat>() != null)
+            // 兼容 Meat、Carbon、Charcoal 组件与标签
+            if ((tagToCheck == "Grabbable" || tagToCheck == "Meat" || tagToCheck == "Carbon" || tagToCheck == "Charcoal") && GetComponent<Cooking.Meat>() != null)
             {
                 return true;
             }
@@ -127,7 +127,7 @@ namespace AsadoSimulator.Interaction
         public bool CanGrabWithTag(string tagFilter)
         {
             if (string.IsNullOrEmpty(tagFilter)) return true;
-            return MatchesTag(tagFilter) || MatchesTag(requiredTag) || MatchesTag("Meat") || GetComponent<Cooking.Meat>() != null;
+            return MatchesTag(tagFilter) || MatchesTag(requiredTag) || MatchesTag("Meat") || MatchesTag("Carbon") || MatchesTag("Charcoal") || GetComponent<Cooking.Meat>() != null;
         }
 
         /// <summary>

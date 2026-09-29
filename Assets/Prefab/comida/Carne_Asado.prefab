@@ -502,6 +502,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0860b52e8e5aca840855f0a9bcb1d654, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AsadoSimulator.Cooking.Meat
+  isCarneAsado: 1
   cookProgress: 0
   cookSpeed: 0.05
   meatRenderer: {fileID: 0}

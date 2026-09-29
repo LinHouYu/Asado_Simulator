@@ -142,71 +142,88 @@ namespace AsadoSimulator.Interaction
         {
             if (ingredientPrefab == null) return;
 
-            // 1. Instantiate the clean prefab at the mother's exact transform
-            GameObject newItem = Instantiate(ingredientPrefab, transform.position, transform.rotation);
-
-            // 2. Determine target scale
-            Vector3 targetScale = (scaleMode == ScaleMode.UseSpawnerScale)
-                ? transform.localScale
-                : ingredientPrefab.transform.localScale;
-
-            newItem.transform.localScale = targetScale;
-
-            // 3. Remove any InfiniteIngredientSource from the spawned child if the prefab had one
-            var childSources = newItem.GetComponentsInChildren<InfiniteIngredientSource>(true);
-            for (int i = 0; i < childSources.Length; i++)
+            try
             {
-                DestroyImmediate(childSources[i]);
-            }
+                // 1. Instantiate the clean prefab at the mother's exact transform
+                GameObject newItem = Instantiate(ingredientPrefab, transform.position, transform.rotation);
 
-            // 4. GUARANTEE active visual renderers on the spawned item
-            var renderers = newItem.GetComponentsInChildren<Renderer>(true);
-            for (int i = 0; i < renderers.Length; i++)
+                // 2. Determine target scale
+                Vector3 targetScale = (scaleMode == ScaleMode.UseSpawnerScale)
+                    ? transform.localScale
+                    : ingredientPrefab.transform.localScale;
+
+                newItem.transform.localScale = targetScale;
+
+                // 3. Remove any InfiniteIngredientSource from the spawned child if the prefab had one
+                var childSources = newItem.GetComponentsInChildren<InfiniteIngredientSource>(true);
+                for (int i = 0; i < childSources.Length; i++)
+                {
+                    DestroyImmediate(childSources[i]);
+                }
+
+                // 4. GUARANTEE active visual renderers on the spawned item
+                var renderers = newItem.GetComponentsInChildren<Renderer>(true);
+                for (int i = 0; i < renderers.Length; i++)
+                {
+                    renderers[i].enabled = true;
+                }
+
+                // 5. GUARANTEE active colliders on the spawned item
+                var colliders = newItem.GetComponentsInChildren<Collider>(true);
+                for (int i = 0; i < colliders.Length; i++)
+                {
+                    colliders[i].enabled = true;
+                }
+
+                // 6. Guarantee Rigidbody and GrabbableObject components
+                if (!newItem.TryGetComponent<Rigidbody>(out var rb))
+                {
+                    rb = newItem.AddComponent<Rigidbody>();
+                }
+
+                if (!newItem.TryGetComponent<GrabbableObject>(out var grabbable))
+                {
+                    grabbable = newItem.AddComponent<GrabbableObject>();
+                }
+                grabbable.enabled = true;
+                grabbable.ResetGrabState();
+
+                // 7. Configure the waiting state on the table (Kinematic + Trigger)
+                // Clear velocities while dynamic (NO kinematic velocity error!)
+                if (!rb.isKinematic)
+                {
+                    rb.linearVelocity = Vector3.zero;
+                    rb.angularVelocity = Vector3.zero;
+                }
+                // Freeze in place on table so it never falls or gets pushed
+                rb.isKinematic = true;
+                rb.useGravity = false;
+                // Set trigger so other objects pass through it without colliding
+                grabbable.SetCollidersTrigger(true);
+
+                // Hook pickup event
+                _currentGrabbable = grabbable;
+                _currentGrabbable.OnGrabbedAction += HandleIngredientGrabbedAction;
+
+                _currentIngredient = newItem;
+                _isReplenishing = false;
+
+                onReplenished?.Invoke();
+            }
+            catch (Exception ex)
             {
-                renderers[i].enabled = true;
+                Debug.LogError($"[InfiniteIngredientSource] 生成食材 '{ingredientPrefab.name}' 发生异常: {ex.Message}\n{ex.StackTrace}", this);
+                _isReplenishing = true; // 锁定防止每帧循环刷屏生成
+                if (_replenishCoroutine != null) StopCoroutine(_replenishCoroutine);
+                _replenishCoroutine = StartCoroutine(SafeRetryRoutine());
             }
+        }
 
-            // 5. GUARANTEE active colliders on the spawned item
-            var colliders = newItem.GetComponentsInChildren<Collider>(true);
-            for (int i = 0; i < colliders.Length; i++)
-            {
-                colliders[i].enabled = true;
-            }
-
-            // 6. Guarantee Rigidbody and GrabbableObject components
-            if (!newItem.TryGetComponent<Rigidbody>(out var rb))
-            {
-                rb = newItem.AddComponent<Rigidbody>();
-            }
-
-            if (!newItem.TryGetComponent<GrabbableObject>(out var grabbable))
-            {
-                grabbable = newItem.AddComponent<GrabbableObject>();
-            }
-            grabbable.enabled = true;
-            grabbable.ResetGrabState();
-
-            // 7. Configure the waiting state on the table (Kinematic + Trigger)
-            // Clear velocities while dynamic (NO kinematic velocity error!)
-            if (!rb.isKinematic)
-            {
-                rb.linearVelocity = Vector3.zero;
-                rb.angularVelocity = Vector3.zero;
-            }
-            // Freeze in place on table so it never falls or gets pushed
-            rb.isKinematic = true;
-            rb.useGravity = false;
-            // Set trigger so other objects pass through it without colliding
-            grabbable.SetCollidersTrigger(true);
-
-            // Hook pickup event
-            _currentGrabbable = grabbable;
-            _currentGrabbable.OnGrabbedAction += HandleIngredientGrabbedAction;
-
-            _currentIngredient = newItem;
+        private IEnumerator SafeRetryRoutine()
+        {
+            yield return new WaitForSeconds(2.0f);
             _isReplenishing = false;
-
-            onReplenished?.Invoke();
+            SpawnIngredient();
         }
 
         private void HandleIngredientGrabbedAction(GrabbableObject grabbedObj)

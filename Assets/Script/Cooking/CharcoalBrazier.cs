@@ -272,14 +272,24 @@ namespace AsadoSimulator.Cooking
         {
             if (!showCountTextBeforeBurning) return;
 
+            int meatCoalCount = 0;
+            for (int i = 0; i < _collectedCharcoals.Count; i++)
+            {
+                if (_collectedCharcoals[i] != null && (_collectedCharcoals[i].GetComponent<Meat>() != null || _collectedCharcoals[i].GetComponentInParent<Meat>() != null))
+                {
+                    meatCoalCount++;
+                }
+            }
+
+            string bonusHint = meatCoalCount > 0 ? $" (含{meatCoalCount}块纯肉炭🍖)" : "";
             string content;
             if (_isSettling)
             {
-                content = $"{_collectedCharcoals.Count}/{requiredCharcoalCount} (calentando...)";
+                content = $"{_collectedCharcoals.Count}/{requiredCharcoalCount} (calentando...{bonusHint})";
             }
             else
             {
-                content = $"{_collectedCharcoals.Count}/{requiredCharcoalCount}";
+                content = $"{_collectedCharcoals.Count}/{requiredCharcoalCount}{bonusHint}";
             }
 
             if (countTextTMP != null) countTextTMP.text = content;
@@ -342,6 +352,17 @@ namespace AsadoSimulator.Cooking
         {
             rootCharcoal = obj;
 
+            // 1. 戏剧性搞笑功能：检测烤糊炭化的肉块（肉炭也是合格的煤炭！）
+            if (obj.TryGetComponent<Meat>(out var meat) || (meat = obj.GetComponentInParent<Meat>()) != null)
+            {
+                if (meat.IsBurntToCharcoal)
+                {
+                    rootCharcoal = meat.gameObject;
+                    return true;
+                }
+            }
+
+            // 2. 正常 Tag 匹配 (Carbon, Charcoal)
             if (MatchesCharcoalTag(obj))
             {
                 rootCharcoal = obj;
@@ -452,7 +473,7 @@ namespace AsadoSimulator.Cooking
                 var charcoal = _collectedCharcoals[i];
                 if (charcoal != null)
                 {
-                    if (destroyOriginalCharcoals)
+                    if (destroyOriginalCharcoals || charcoal.GetComponent<Meat>() != null || charcoal.GetComponentInParent<Meat>() != null)
                     {
                         Destroy(charcoal);
                     }

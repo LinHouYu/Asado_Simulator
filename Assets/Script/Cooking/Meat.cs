@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.Events;
@@ -36,7 +37,10 @@ namespace AsadoSimulator.Cooking
         [SerializeField] private float cookSpeed = 0.05f;
 
         [Header("外观渲染与颜色配置")]
-        [Tooltip("肉块的主渲染器 (MeshRenderer)。若为空，将在 Awake 中自动获取自身或子级的 Renderer")]
+        [Tooltip("是否为 Carne_Asado 专属模式（仅变色红色肉质部分，保持白色骨头和脂肪不被染黑）")]
+        [SerializeField] private bool isCarneAsado = false;
+
+        [Tooltip("肉块的主渲染器 (用于 Carne_Asado 针对性变色。若为空将自动检测)")]
         [SerializeField] private Renderer meatRenderer;
 
         [Tooltip("生肉阶段基础颜色 (Raw - 0.0)")]
@@ -50,6 +54,13 @@ namespace AsadoSimulator.Cooking
 
         [Tooltip("是否使用 MaterialPropertyBlock（推荐开启，性能高且不会在内存中实例化重复材质）")]
         [SerializeField] private bool usePropertyBlock = true;
+
+        [Header("戏剧性功能：焦炭煤炭化")]
+        [Tooltip("当肉块完全烤焦 (cookProgress >= 1.0) 时，是否将其转变为普通煤炭 (Tag: Carbon)，可直接投入火盆作为燃料使用")]
+        [SerializeField] private bool turnIntoCharcoalWhenBurnt = true;
+
+        [Tooltip("转变为煤炭后的搞笑提示标签")]
+        [SerializeField] private string charcoalHumorLabel = "💀 炭化完成！已获得优质肉炭 (可投入火盆燃烧)";
 
         [Header("UI 显示配置")]
         [Tooltip("如果未手动指定 Canvas 和 Slider，是否在肉块头顶自动生成小巧的熟度进度条 UI")]
@@ -79,6 +90,7 @@ namespace AsadoSimulator.Cooking
         private MaterialPropertyBlock _propBlock;
         private bool _perfectCookedFired = false;
         private bool _burntFired = false;
+        private readonly List<Renderer> _cachedRenderers = new List<Renderer>();
 
         // Shader 属性 ID 缓存（同时兼容 URP 和标准管线）
         private static readonly int BaseColorId = Shader.PropertyToID("_BaseColor"); // URP Lit / Unlit
@@ -86,9 +98,13 @@ namespace AsadoSimulator.Cooking
         private static readonly int CookProgressId = Shader.PropertyToID("_CookProgress");
         private static readonly int BurnAmountId = Shader.PropertyToID("_BurnAmount");
 
+        private bool _isBurntToCharcoal = false;
+        private Text _uiHumorText;
+
         // 公开属性
         public float CookProgress => cookProgress;
         public bool IsOnHeatingGrill => _currentGrill != null && _currentGrill.IsHeating;
+        public bool IsBurntToCharcoal => _isBurntToCharcoal;
 
         public MeatCookState CurrentCookState
         {
@@ -105,21 +121,77 @@ namespace AsadoSimulator.Cooking
 
         private void Awake()
         {
-            if (meatRenderer == null)
-            {
-                meatRenderer = GetComponentInChildren<Renderer>();
-            }
-
             if (usePropertyBlock)
             {
                 _propBlock = new MaterialPropertyBlock();
             }
 
             FindMainCamera();
+            InitializeRenderers();
             EnsureUI();
             InitializeUI();
             UpdateMeatAppearance(cookProgress);
         }
+
+        private void InitializeRenderers()
+        {
+            _cachedRenderers.Clear();
+
+            bool isCarne = isCarneAsado || gameObject.name.Contains("Carne_Asado") || (transform.parent != null && transform.parent.name.Contains("Carne_Asado"));
+
+            if (isCarne)
+            {
+                // Carne_Asado 专属：仅变色肉质部分，绝对不污染白色的骨头和脂肪
+                if (meatRenderer != null)
+                {
+                    _cachedRenderers.Add(meatRenderer);
+                }
+                else
+                {
+                    var all = GetComponentsInChildren<Renderer>(true);
+                    Renderer foundMeat = null;
+                    for (int i = 0; i < all.Length; i++)
+                    {
+                        var r = all[i];
+                        if (r == null) continue;
+                        if (r.gameObject.name.ToLower().Contains("meat") || (r.sharedMaterial != null && r.sharedMaterial.name.ToLower().Contains("meat")))
+                        {
+                            foundMeat = r;
+                            break;
+                        }
+                    }
+                    if (foundMeat != null)
+                    {
+                        meatRenderer = foundMeat;
+                        _cachedRenderers.Add(foundMeat);
+                    }
+                    else if (all.Length > 0)
+                    {
+                        meatRenderer = all[0];
+                        _cachedRenderers.Add(all[0]);
+                    }
+                }
+            }
+            else
+            {
+                // 其他所有肉类 (Chorizo、Matambre、Morcilla、Pollo 等)：
+                // 收集模型下的全部子渲染器，确保整个模型一整块一起变色，不再是一小块！
+                var all = GetComponentsInChildren<Renderer>(true);
+                for (int i = 0; i < all.Length; i++)
+                {
+                    var r = all[i];
+                    if (r == null) continue;
+                    if (r.GetComponentInParent<Canvas>() != null) continue;
+                    _cachedRenderers.Add(r);
+                }
+
+                if (_cachedRenderers.Count > 0 && meatRenderer == null)
+                {
+                    meatRenderer = _cachedRenderers[0];
+                }
+            }
+        }
+
 
         private void Start()
         {
@@ -284,8 +356,8 @@ namespace AsadoSimulator.Cooking
 
             if (autoHideUI)
             {
-                // 当在烤架上受热，或者已经有熟度进度时显示
-                bool shouldShow = IsOnHeatingGrill || (cookProgress > 0.01f && cookProgress < 1.0f);
+                // 当在烤架上受热，或者已经有熟度进度，或者已烧焦碳化为煤炭时显示
+                bool shouldShow = IsOnHeatingGrill || (cookProgress > 0.01f && cookProgress < 1.0f) || _isBurntToCharcoal;
                 if (sliderCanvas.gameObject.activeSelf != shouldShow)
                 {
                     sliderCanvas.gameObject.SetActive(shouldShow);
@@ -324,6 +396,10 @@ namespace AsadoSimulator.Cooking
             if (!_burntFired && cookProgress >= 1.0f)
             {
                 _burntFired = true;
+                if (turnIntoCharcoalWhenBurnt)
+                {
+                    TransformIntoCharcoal();
+                }
                 onBurnt?.Invoke();
             }
         }
@@ -337,56 +413,188 @@ namespace AsadoSimulator.Cooking
         /// <param name="progress">当前熟度进度 (0.0 ~ 1.0)</param>
         public void UpdateMeatAppearance(float progress)
         {
-            if (meatRenderer == null) return;
+            if (_cachedRenderers.Count == 0)
+            {
+                InitializeRenderers();
+                if (_cachedRenderers.Count == 0) return;
+            }
+
+            bool isCarne = isCarneAsado || gameObject.name.Contains("Carne_Asado") || (transform.parent != null && transform.parent.name.Contains("Carne_Asado"));
 
             Color targetColor;
             float burnShaderAmount = 0f;
 
-            if (progress <= 0.5f)
+            if (isCarne)
             {
-                // 第一阶段：生肉红 -> 熟肉棕
-                float t = progress / 0.5f;
-                targetColor = Color.Lerp(rawColor, cookedColor, t);
-                burnShaderAmount = 0f;
+                // Carne_Asado: 从设定的 rawColor (鲜红) 过渡到 cookedColor (熟棕) 到 burntColor (炭黑)
+                if (progress <= 0.5f)
+                {
+                    float t = progress / 0.5f;
+                    targetColor = Color.Lerp(rawColor, cookedColor, t);
+                    burnShaderAmount = 0f;
+                }
+                else
+                {
+                    float t = (progress - 0.5f) / 0.5f;
+                    targetColor = Color.Lerp(cookedColor, burntColor, t);
+                    burnShaderAmount = t;
+                }
             }
             else
             {
-                // 第二阶段：熟肉棕 -> 烧焦黑
-                float t = (progress - 0.5f) / 0.5f;
-                targetColor = Color.Lerp(cookedColor, burntColor, t);
-                burnShaderAmount = t;
+                // 其他肉类 (自带真实纹理贴图)：
+                // 0.0 全生时使用纯白 (1, 1, 1) 完美呈现其自身材质自带的逼真生肉贴图！
+                // 0.0 ~ 0.5: 均匀渗入金黄烤熟棕色 (cookedColor)
+                // 0.5 ~ 1.0: 均匀渗入焦黑炭化色 (burntColor)
+                if (progress <= 0.5f)
+                {
+                    float t = progress / 0.5f;
+                    targetColor = Color.Lerp(Color.white, cookedColor, t);
+                    burnShaderAmount = 0f;
+                }
+                else
+                {
+                    float t = (progress - 0.5f) / 0.5f;
+                    targetColor = Color.Lerp(cookedColor, burntColor, t);
+                    burnShaderAmount = t;
+                }
             }
 
-            // 方案 A：使用 MaterialPropertyBlock (推荐，高效且不破环合批与材质文件)
-            if (usePropertyBlock)
+            // 对整块模型的所有子渲染器统一设置，实现整块模型同步均匀变色！
+            for (int i = 0; i < _cachedRenderers.Count; i++)
             {
-                meatRenderer.GetPropertyBlock(_propBlock);
+                var rend = _cachedRenderers[i];
+                if (rend == null) continue;
 
-                // 兼容 URP (_BaseColor) 与 Built-in (_Color)
-                _propBlock.SetColor(BaseColorId, targetColor);
-                _propBlock.SetColor(ColorId, targetColor);
-
-                // 额外提供 Float 参数方便自定义 Shader 做烧焦噪波/溶解/炭化边缘
-                _propBlock.SetFloat(CookProgressId, progress);
-                _propBlock.SetFloat(BurnAmountId, burnShaderAmount);
-
-                meatRenderer.SetPropertyBlock(_propBlock);
+                if (usePropertyBlock)
+                {
+                    rend.GetPropertyBlock(_propBlock);
+                    _propBlock.SetColor(BaseColorId, targetColor);
+                    _propBlock.SetColor(ColorId, targetColor);
+                    _propBlock.SetFloat(CookProgressId, progress);
+                    _propBlock.SetFloat(BurnAmountId, burnShaderAmount);
+                    rend.SetPropertyBlock(_propBlock);
+                }
+                else
+                {
+                    Material mat = rend.material;
+                    if (mat.HasProperty(BaseColorId)) mat.SetColor(BaseColorId, targetColor);
+                    else if (mat.HasProperty(ColorId)) mat.SetColor(ColorId, targetColor);
+                    if (mat.HasProperty(CookProgressId)) mat.SetFloat(CookProgressId, progress);
+                    if (mat.HasProperty(BurnAmountId)) mat.SetFloat(BurnAmountId, burnShaderAmount);
+                }
             }
-            // 方案 B：直接修改实例化材质 (fallback 方式)
-            else
-            {
-                Material mat = meatRenderer.material;
-                if (mat.HasProperty(BaseColorId))
-                {
-                    mat.SetColor(BaseColorId, targetColor);
-                }
-                else if (mat.HasProperty(ColorId))
-                {
-                    mat.SetColor(ColorId, targetColor);
-                }
 
-                if (mat.HasProperty(CookProgressId)) mat.SetFloat(CookProgressId, progress);
-                if (mat.HasProperty(BurnAmountId)) mat.SetFloat(BurnAmountId, burnShaderAmount);
+            if (turnIntoCharcoalWhenBurnt && progress >= 1.0f && !_isBurntToCharcoal)
+            {
+                TransformIntoCharcoal();
+            }
+        }
+
+        /// <summary>
+        /// 戏剧性搞笑功能：肉块烧满完全焦糊后，彻底物理碳化为普通煤炭 (Tag: Carbon)，可直接放入火盆作为燃料使用！
+        /// </summary>
+        public void TransformIntoCharcoal()
+        {
+            if (_isBurntToCharcoal) return;
+            _isBurntToCharcoal = true;
+
+            // 1. 修改标签为 Carbon，让火盆和各类检测将其直接认作普通煤炭
+            gameObject.tag = "Carbon";
+            var allColliders = GetComponentsInChildren<Collider>(true);
+            for (int i = 0; i < allColliders.Length; i++)
+            {
+                allColliders[i].gameObject.tag = "Carbon";
+            }
+
+            // 2. 物体命名增加幽默后缀
+            if (!gameObject.name.Contains("(焦炭)"))
+            {
+                gameObject.name = $"{gameObject.name} (焦炭/可当煤炭)";
+            }
+
+            // 3. 喷出一阵搞笑的焦黑烟雾特效 (POOF!)
+            SpawnBurntSmokePuff();
+
+            // 4. 更新 UI 显示幽默提示与炭黑进度条
+            UpdateCharcoalUI();
+        }
+
+        private void SpawnBurntSmokePuff()
+        {
+            GameObject puff = new GameObject("BurntSmokePuff");
+            puff.transform.position = transform.position + Vector3.up * 0.1f;
+            var ps = puff.AddComponent<ParticleSystem>();
+            var main = ps.main;
+            main.duration = 0.8f;
+            main.startLifetime = 1.2f;
+            main.startSpeed = 0.8f;
+            main.startSize = 0.18f;
+            main.startColor = new Color(0.08f, 0.08f, 0.08f, 0.9f);
+            main.stopAction = ParticleSystemStopAction.Destroy;
+            main.loop = false;
+
+            var emission = ps.emission;
+            emission.rateOverTime = 0;
+            emission.SetBursts(new ParticleSystem.Burst[] { new ParticleSystem.Burst(0f, 20) });
+
+            var shape = ps.shape;
+            shape.shapeType = ParticleSystemShapeType.Sphere;
+            shape.radius = 0.1f;
+
+            var pRenderer = puff.GetComponent<ParticleSystemRenderer>();
+            Shader pShader = Shader.Find("Universal Render Pipeline/Particles/Unlit") 
+                             ?? Shader.Find("Particles/Standard Unlit") 
+                             ?? Shader.Find("Sprites/Default");
+            pRenderer.material = new Material(pShader);
+            pRenderer.material.color = new Color(0.1f, 0.1f, 0.1f, 0.85f);
+
+            ps.Play();
+            Destroy(puff, 1.8f);
+        }
+
+        private void UpdateCharcoalUI()
+        {
+            if (sliderCanvas == null) return;
+
+            sliderCanvas.gameObject.SetActive(true);
+
+            // 修改 Slider 为炭黑色
+            if (cookSlider != null)
+            {
+                cookSlider.value = 1.0f;
+                if (cookSlider.fillRect != null && cookSlider.fillRect.TryGetComponent<Image>(out var fillImg))
+                {
+                    fillImg.color = new Color(0.1f, 0.1f, 0.1f, 1f);
+                }
+            }
+
+            // 动态挂载/更新幽默文本提示
+            if (_uiHumorText == null)
+            {
+                GameObject textObj = new GameObject("CharcoalHumorText");
+                textObj.transform.SetParent(sliderCanvas.transform, false);
+                var rt = textObj.AddComponent<RectTransform>();
+                rt.anchorMin = new Vector2(0.5f, 1f);
+                rt.anchorMax = new Vector2(0.5f, 1f);
+                rt.pivot = new Vector2(0.5f, 0f);
+                rt.anchoredPosition = new Vector2(0f, 6f);
+                rt.sizeDelta = new Vector2(260f, 30f);
+
+                _uiHumorText = textObj.AddComponent<Text>();
+                _uiHumorText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+                if (_uiHumorText.font == null) _uiHumorText.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
+                _uiHumorText.fontSize = 11;
+                _uiHumorText.alignment = TextAnchor.MiddleCenter;
+                _uiHumorText.color = new Color(1f, 0.85f, 0.2f, 1f); // 亮眼金黄提示色
+                _uiHumorText.horizontalOverflow = HorizontalWrapMode.Overflow;
+                _uiHumorText.verticalOverflow = VerticalWrapMode.Overflow;
+            }
+
+            if (_uiHumorText != null)
+            {
+                _uiHumorText.text = charcoalHumorLabel;
+                _uiHumorText.gameObject.SetActive(true);
             }
         }
 
