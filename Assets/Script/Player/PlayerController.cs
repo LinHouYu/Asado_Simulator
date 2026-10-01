@@ -2,6 +2,7 @@ using System;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using AsadoSimulator.Interaction;
+using AsadoSimulator.UI;
 
 namespace AsadoSimulator.Player
 {
@@ -94,6 +95,7 @@ namespace AsadoSimulator.Player
 
         public Camera PlayerCamera => playerCamera;
         public ObjectGrabber Grabber => objectGrabber;
+        public bool IsCrouching => _isCrouching;
 
         private void Awake()
         {
@@ -163,19 +165,39 @@ namespace AsadoSimulator.Player
 
         private void HandleCursorLock()
         {
+            // 暂停期间由暂停菜单接管光标与输入，禁止自动重新锁定
+            if (PauseMenuUI.Instance != null && PauseMenuUI.Instance.IsPaused)
+            {
+                return;
+            }
+
             var keyboard = Keyboard.current;
             var mouse = Mouse.current;
 
-            if (keyboard != null && keyboard.escapeKey.wasPressedThisFrame)
+            bool escPressed = keyboard != null && keyboard.escapeKey.wasPressedThisFrame;
+
+            if (escPressed)
             {
-                SetCursorLocked(false);
+                var menu = PauseMenuUI.EnsureInstance();
+                if (menu != null)
+                {
+                    menu.TogglePause();
+                }
+                else
+                {
+                    SetCursorLocked(false);
+                }
+                return;
             }
 
             if (mouse != null && (mouse.leftButton.wasPressedThisFrame || mouse.rightButton.wasPressedThisFrame))
             {
-                if (Cursor.lockState != CursorLockMode.Locked)
+                if (PauseMenuUI.Instance == null || !PauseMenuUI.Instance.IsPaused)
                 {
-                    SetCursorLocked(true);
+                    if (Cursor.lockState != CursorLockMode.Locked)
+                    {
+                        SetCursorLocked(true);
+                    }
                 }
             }
         }
@@ -192,6 +214,7 @@ namespace AsadoSimulator.Player
 
         private void HandleCameraLook()
         {
+            if (PauseMenuUI.Instance != null && PauseMenuUI.Instance.IsPaused) return;
             if (_cameraTransform == null || Cursor.lockState != CursorLockMode.Locked) return;
 
             var mouse = Mouse.current;
@@ -209,6 +232,7 @@ namespace AsadoSimulator.Player
 
         private void HandleMovement()
         {
+            if (PauseMenuUI.Instance != null && PauseMenuUI.Instance.IsPaused) return;
             var keyboard = Keyboard.current;
             Vector2 inputDir = Vector2.zero;
 

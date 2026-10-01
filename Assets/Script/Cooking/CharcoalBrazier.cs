@@ -241,6 +241,8 @@ namespace AsadoSimulator.Cooking
             }
         }
 
+        private static TMP_FontAsset _chineseTmpFontFallback;
+
         private void InitializeUI()
         {
             // Canvas 整体常开（用于显示 0/4 文本）
@@ -248,6 +250,10 @@ namespace AsadoSimulator.Cooking
             {
                 sliderCanvas.gameObject.SetActive(true);
             }
+
+            // 改造为【烤肉同款进度条】样式，并优化中文字体与尺寸
+            ApplyMeatStyleToSlider();
+            SetupChineseFontAndSizeSupport();
 
             // 未燃烧时：隐藏 Slider，展示文本
             if (burnProgressSlider != null)
@@ -260,6 +266,83 @@ namespace AsadoSimulator.Cooking
 
             SetTextVisible(showCountTextBeforeBurning);
             UpdateCountTextUI();
+        }
+
+        /// <summary>
+        /// 将火盆燃烧进度条改造为【烤肉同款进度条】：
+        /// - 相同的暗黑半透明底色 (0.12, 0.12, 0.12, 0.85)
+        /// - 相同的温润金黄色填充 (1.0, 0.72, 0.18, 1.0)
+        /// - 相同的 -4 像素边距缩进
+        /// - 隐藏 Handle 滑块手柄
+        /// </summary>
+        private void ApplyMeatStyleToSlider()
+        {
+            if (burnProgressSlider == null) return;
+
+            burnProgressSlider.interactable = false;
+            burnProgressSlider.transition = Selectable.Transition.None;
+
+            // 1. 背景底色：与烤肉进度条完全一致的暗黑半透明底色
+            var bg = burnProgressSlider.transform.Find("Background");
+            if (bg != null && bg.TryGetComponent<Image>(out var bgImg))
+            {
+                bgImg.color = new Color(0.12f, 0.12f, 0.12f, 0.85f);
+            }
+
+            // 2. 填充区域：四周 -4 像素边距缩进
+            var fillArea = burnProgressSlider.transform.Find("Fill Area");
+            if (fillArea != null && fillArea.TryGetComponent<RectTransform>(out var faRt))
+            {
+                faRt.anchorMin = Vector2.zero;
+                faRt.anchorMax = Vector2.one;
+                faRt.sizeDelta = new Vector2(-4f, -4f);
+                faRt.anchoredPosition = Vector2.zero;
+            }
+
+            // 3. 填充物颜色：与烤肉进度条完全一致的温润金黄色
+            if (burnProgressSlider.fillRect != null && burnProgressSlider.fillRect.TryGetComponent<Image>(out var fillImg))
+            {
+                fillImg.color = new Color(1.0f, 0.72f, 0.18f, 1.0f);
+                burnProgressSlider.targetGraphic = fillImg;
+            }
+
+            // 4. 隐藏不需要的 Handle 滑块手柄
+            var handleArea = burnProgressSlider.transform.Find("Handle Slide Area");
+            if (handleArea != null)
+            {
+                handleArea.gameObject.SetActive(false);
+            }
+        }
+
+        private void SetupChineseFontAndSizeSupport()
+        {
+            if (countTextTMP == null) return;
+
+            // 1. 将字母/字号设置得稍微更小一点点（从原 0.2f 调整至 0.14f，更精致协调）
+            countTextTMP.fontSize = 0.14f;
+
+            // 2. 使用全局经过安全校验的中文字体资产作为 TMP Fallback
+            _chineseTmpFontFallback = AsadoSimulator.UI.ModernUIBuilder.GetChineseFontAsset();
+
+            if (_chineseTmpFontFallback != null && AsadoSimulator.UI.ModernUIBuilder.IsFontAssetValid(_chineseTmpFontFallback))
+            {
+                if (countTextTMP.font != null)
+                {
+                    if (countTextTMP.font.fallbackFontAssetTable == null)
+                    {
+                        countTextTMP.font.fallbackFontAssetTable = new List<TMP_FontAsset>();
+                    }
+                    countTextTMP.font.fallbackFontAssetTable.RemoveAll(item => item == null || !AsadoSimulator.UI.ModernUIBuilder.IsFontAssetValid(item));
+                    if (!countTextTMP.font.fallbackFontAssetTable.Contains(_chineseTmpFontFallback))
+                    {
+                        countTextTMP.font.fallbackFontAssetTable.Add(_chineseTmpFontFallback);
+                    }
+                }
+                else
+                {
+                    countTextTMP.font = _chineseTmpFontFallback;
+                }
+            }
         }
 
         private void SetTextVisible(bool visible)
@@ -281,11 +364,11 @@ namespace AsadoSimulator.Cooking
                 }
             }
 
-            string bonusHint = meatCoalCount > 0 ? $" (含{meatCoalCount}块纯肉炭🍖)" : "";
+            string bonusHint = meatCoalCount > 0 ? $" (含{meatCoalCount}块纯肉炭)" : "";
             string content;
             if (_isSettling)
             {
-                content = $"{_collectedCharcoals.Count}/{requiredCharcoalCount} (calentando...{bonusHint})";
+                content = $"{_collectedCharcoals.Count}/{requiredCharcoalCount} (准备点燃...{bonusHint})";
             }
             else
             {
@@ -418,6 +501,7 @@ namespace AsadoSimulator.Cooking
 
             if (burnProgressSlider != null)
             {
+                ApplyMeatStyleToSlider();
                 burnProgressSlider.gameObject.SetActive(true);
                 burnProgressSlider.value = 0f;
             }

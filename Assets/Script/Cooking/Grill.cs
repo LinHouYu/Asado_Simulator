@@ -63,17 +63,25 @@ namespace AsadoSimulator.Cooking
             }
         }
 
+        private static readonly System.Predicate<GameObject> NullCharcoalPredicate = charcoal => charcoal == null;
+
         private void CleanInvalidEntries()
         {
-            // 清理已销毁的高温炭
-            _hotCharcoals.RemoveWhere(charcoal => charcoal == null);
+            // 清理已销毁的高温炭 (0 GC 分配)
+            if (_hotCharcoals.Count > 0)
+            {
+                _hotCharcoals.RemoveWhere(NullCharcoalPredicate);
+            }
 
             // 清理已销毁或被拿走的肉
-            for (int i = _cookingMeats.Count - 1; i >= 0; i--)
+            if (_cookingMeats.Count > 0)
             {
-                if (_cookingMeats[i] == null)
+                for (int i = _cookingMeats.Count - 1; i >= 0; i--)
                 {
-                    _cookingMeats.RemoveAt(i);
+                    if (_cookingMeats[i] == null)
+                    {
+                        _cookingMeats.RemoveAt(i);
+                    }
                 }
             }
         }
