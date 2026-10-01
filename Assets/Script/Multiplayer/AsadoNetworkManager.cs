@@ -42,6 +42,7 @@ namespace AsadoSimulator.Multiplayer
         public static event Action OnClientDisconnectedEvent;
         public static event Action<string> OnNetworkErrorEvent;
         public static event Action<int> OnPlayerCountChangedEvent;
+        public static event Action OnWorldSyncCompletedEvent;
 
         // 网络状态
         private bool _isHost = false;
@@ -57,6 +58,8 @@ namespace AsadoSimulator.Multiplayer
         public bool IsClientOnly => _isClientOnly;
         public float RoundTripTimeMs => _roundTripTimeMs;
         public int ConnectedPlayerCount => _isServerRunning ? Mathf.Max(1, _serverClients.Count) : (_remotePlayers.Count + 1);
+        public int LocalPlayerId => _localPlayerId;
+        public IReadOnlyDictionary<int, RemotePlayerAvatar> RemotePlayers => _remotePlayers;
 
         // TCP 服务端
         private TcpListener _tcpListener;
@@ -352,7 +355,13 @@ namespace AsadoSimulator.Multiplayer
                         }
                     }
 
-                    // 3. 启动该客户端的读取循环
+                    // 3. 在主线程生成世界快照并同步给新客户端 (物理物体、火盆状态、食材熟度)
+                    _mainThreadQueue.Enqueue(() =>
+                    {
+                        SendWorldState(client);
+                    });
+
+                    // 4. 启动该客户端的读取循环
                     _ = ServerClientReadLoop(newPlayerId, client, token);
                 }
                 catch (ObjectDisposedException) { break; }
@@ -450,6 +459,9 @@ namespace AsadoSimulator.Multiplayer
                     break;
 
                 case NetMsgType.MeatSync:
+                case NetMsgType.ObjectGrab:
+                case NetMsgType.ObjectDrop:
+                case NetMsgType.BrazierSync:
                     // 广播转发给除发送者外的所有玩家
                     BroadcastPacketFromServer((NetMsgType)msgType, w => w.Write(payload), excludePlayerId: senderId);
                     break;
@@ -552,6 +564,10 @@ namespace AsadoSimulator.Multiplayer
                         int totalPlayers = reader.ReadInt32();
                         Debug.Log($"[AsadoNetworkManager] 握手成功，已分配 Local Player ID: {_localPlayerId}，当前房间人数: {totalPlayers}");
                         OnPlayerCountChangedEvent?.Invoke(totalPlayers);
+                        if (_isHost)
+                        {
+                            OnWorldSyncCompletedEvent?.Invoke();
+                        }
                         break;
 
                     case NetMsgType.PlayerTransform:
@@ -580,6 +596,40 @@ namespace AsadoSimulator.Multiplayer
                         float doneness = reader.ReadSingle();
                         bool isBurnt = reader.ReadBoolean();
                         ApplyMeatSync(meatId, meatPos, meatRot, doneness, isBurnt);
+                        break;
+
+                    case NetMsgType.ObjectGrab:
+                        int grabSyncId = reader.ReadInt32();
+                        int grabberPlayerId = reader.ReadInt32();
+                        if (grabberPlayerId != _localPlayerId)
+                        {
+                            ApplyRemoteObjectGrab(grabSyncId, grabberPlayerId);
+                        }
+                        break;
+
+                    case NetMsgType.ObjectDrop:
+                        int dropSyncId = reader.ReadInt32();
+                        Vector3 dPos = new Vector3(reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle());
+                        Quaternion dRot = new Quaternion(reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle());
+                        Vector3 dVel = new Vector3(reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle());
+                        ApplyRemoteObjectDrop(dropSyncId, dPos, dRot, dVel);
+                        break;
+
+                    case NetMsgType.BrazierSync:
+                        int brCount = reader.ReadInt32();
+                        bool brSettling = reader.ReadBoolean();
+                        bool brBurning = reader.ReadBoolean();
+                        float brProgress = reader.ReadSingle();
+                        var bz = UnityEngine.Object.FindAnyObjectByType<Cooking.CharcoalBrazier>();
+                        if (bz != null)
+                        {
+                            bz.NetworkUpdateBrazier(brCount, brSettling, brBurning, brProgress);
+                        }
+                        break;
+
+                    case NetMsgType.WorldState:
+                        ApplyWorldStateSync(reader);
+                        OnWorldSyncCompletedEvent?.Invoke();
                         break;
                 }
             }
@@ -683,8 +733,251 @@ namespace AsadoSimulator.Multiplayer
             SafeWriteLocalClient(packet);
         }
 
+        /// <summary>
+        /// 广播物体被抓取
+        /// </summary>
+        public void BroadcastObjectGrab(int syncId)
+        {
+            if (!_isClientConnected || _clientStream == null || _localPlayerId <= 0) return;
+
+            byte[] packet = BuildPacket(NetMsgType.ObjectGrab, w =>
+            {
+                w.Write(syncId);
+                w.Write(_localPlayerId);
+            });
+
+            SafeWriteLocalClient(packet);
+        }
+
+        /// <summary>
+        /// 广播物体被放下/扔出
+        /// </summary>
+        public void BroadcastObjectDrop(int syncId, Vector3 pos, Quaternion rot, Vector3 vel)
+        {
+            if (!_isClientConnected || _clientStream == null || _localPlayerId <= 0) return;
+
+            byte[] packet = BuildPacket(NetMsgType.ObjectDrop, w =>
+            {
+                w.Write(syncId);
+                w.Write(pos.x);
+                w.Write(pos.y);
+                w.Write(pos.z);
+                w.Write(rot.x);
+                w.Write(rot.y);
+                w.Write(rot.z);
+                w.Write(rot.w);
+                w.Write(vel.x);
+                w.Write(vel.y);
+                w.Write(vel.z);
+            });
+
+            SafeWriteLocalClient(packet);
+        }
+
+        /// <summary>
+        /// 广播火盆状态
+        /// </summary>
+        public void BroadcastBrazierState(int charcoalCount, bool isSettling, bool isBurning, float progress)
+        {
+            if (!_isClientConnected || _clientStream == null || _localPlayerId <= 0) return;
+
+            byte[] packet = BuildPacket(NetMsgType.BrazierSync, w =>
+            {
+                w.Write(charcoalCount);
+                w.Write(isSettling);
+                w.Write(isBurning);
+                w.Write(progress);
+            });
+
+            SafeWriteLocalClient(packet);
+        }
+
+        /// <summary>
+        /// 服务端向指定客户端发送完整的游戏世界快照
+        /// </summary>
+        private void SendWorldState(TcpClient client)
+        {
+            try
+            {
+                SendPacketToClient(client, NetMsgType.WorldState, w =>
+                {
+                    // 1. 同步所有可抓取物理物体
+                    var syncList = new List<NetworkSyncObject>(NetworkSyncObject.Registry.Values);
+                    w.Write(syncList.Count);
+                    for (int i = 0; i < syncList.Count; i++)
+                    {
+                        var obj = syncList[i];
+                        if (obj == null)
+                        {
+                            w.Write(0);
+                            w.Write(0f); w.Write(0f); w.Write(0f);
+                            w.Write(0f); w.Write(0f); w.Write(0f); w.Write(1f);
+                            continue;
+                        }
+                        w.Write(obj.SyncId);
+                        Vector3 p = obj.transform.position;
+                        Quaternion r = obj.transform.rotation;
+                        w.Write(p.x); w.Write(p.y); w.Write(p.z);
+                        w.Write(r.x); w.Write(r.y); w.Write(r.z); w.Write(r.w);
+                    }
+
+                    // 2. 同步火盆状态
+                    var brazier = UnityEngine.Object.FindAnyObjectByType<Cooking.CharcoalBrazier>();
+                    if (brazier != null)
+                    {
+                        w.Write(true);
+                        w.Write(brazier.CurrentCharcoalCount);
+                        w.Write(brazier.IsSettling);
+                        w.Write(brazier.IsBurning);
+                        w.Write(brazier.BurnProgress);
+                    }
+                    else
+                    {
+                        w.Write(false);
+                    }
+
+                    // 3. 同步所有烤肉熟度
+                    var meats = UnityEngine.Object.FindObjectsByType<Cooking.Meat>(FindObjectsInactive.Exclude);
+                    w.Write(meats.Length);
+                    for (int i = 0; i < meats.Length; i++)
+                    {
+                        var m = meats[i];
+                        int syncId = m.TryGetComponent<NetworkSyncObject>(out var s) ? s.SyncId : m.gameObject.GetInstanceID();
+                        w.Write(syncId);
+                        w.Write(m.CookProgress);
+                        w.Write(m.IsBurnt);
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[AsadoNetworkManager] 发送 WorldState 快照失败: {ex.Message}");
+            }
+        }
+
+        private void ApplyWorldStateSync(BinaryReader reader)
+        {
+            try
+            {
+                // 1. 同步物理物体
+                int objCount = reader.ReadInt32();
+                for (int i = 0; i < objCount; i++)
+                {
+                    int sId = reader.ReadInt32();
+                    Vector3 p = new Vector3(reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle());
+                    Quaternion r = new Quaternion(reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle());
+                    if (sId != 0 && NetworkSyncObject.TryGet(sId, out var syncObj))
+                    {
+                        if (syncObj.transform.parent == null)
+                        {
+                            syncObj.transform.position = p;
+                            syncObj.transform.rotation = r;
+                            if (syncObj.Rigidbody != null)
+                            {
+                                syncObj.Rigidbody.linearVelocity = Vector3.zero;
+                                syncObj.Rigidbody.angularVelocity = Vector3.zero;
+                            }
+                        }
+                    }
+                }
+
+                // 2. 同步火盆
+                bool hasBrazier = reader.ReadBoolean();
+                if (hasBrazier)
+                {
+                    int bCount = reader.ReadInt32();
+                    bool bSettling = reader.ReadBoolean();
+                    bool bBurning = reader.ReadBoolean();
+                    float bProg = reader.ReadSingle();
+                    var brazier = UnityEngine.Object.FindAnyObjectByType<Cooking.CharcoalBrazier>();
+                    if (brazier != null)
+                    {
+                        brazier.NetworkUpdateBrazier(bCount, bSettling, bBurning, bProg);
+                    }
+                }
+
+                // 3. 同步烤肉熟度
+                int meatCount = reader.ReadInt32();
+                for (int i = 0; i < meatCount; i++)
+                {
+                    int meatSyncId = reader.ReadInt32();
+                    float progress = reader.ReadSingle();
+                    bool burnt = reader.ReadBoolean();
+                    if (NetworkSyncObject.TryGet(meatSyncId, out var meatObj))
+                    {
+                        var m = meatObj.GetComponent<Cooking.Meat>();
+                        if (m != null) m.NetworkUpdateProgress(progress);
+                    }
+                }
+
+                Debug.Log("[AsadoNetworkManager] ✅ 客户端世界快照已成功同步并就绪。");
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[AsadoNetworkManager] 解析 WorldState 失败: {ex.Message}");
+            }
+        }
+
+        private void ApplyRemoteObjectGrab(int syncId, int grabberPlayerId)
+        {
+            if (NetworkSyncObject.TryGet(syncId, out var syncObj))
+            {
+                if (_remotePlayers.TryGetValue(grabberPlayerId, out var avatar) && avatar != null)
+                {
+                    avatar.HoldObject(syncObj);
+                }
+                else
+                {
+                    if (syncObj.Rigidbody != null) syncObj.Rigidbody.isKinematic = true;
+                }
+            }
+        }
+
+        private void ApplyRemoteObjectDrop(int syncId, Vector3 pos, Quaternion rot, Vector3 vel)
+        {
+            if (NetworkSyncObject.TryGet(syncId, out var syncObj))
+            {
+                foreach (var avatar in _remotePlayers.Values)
+                {
+                    if (avatar != null && avatar.HeldObject == syncObj)
+                    {
+                        avatar.ReleaseObject(syncObj, pos, rot, vel);
+                        return;
+                    }
+                }
+
+                syncObj.transform.SetParent(null);
+                syncObj.transform.position = pos;
+                syncObj.transform.rotation = rot;
+                foreach (var col in syncObj.GetComponentsInChildren<Collider>())
+                {
+                    col.enabled = true;
+                }
+                if (syncObj.Rigidbody != null)
+                {
+                    syncObj.Rigidbody.isKinematic = false;
+                    syncObj.Rigidbody.linearVelocity = vel;
+                }
+            }
+        }
+
         private void ApplyMeatSync(int meatId, Vector3 pos, Quaternion rot, float doneness, bool isBurnt)
         {
+            if (NetworkSyncObject.TryGet(meatId, out var syncObj))
+            {
+                if (syncObj.transform.parent == null)
+                {
+                    syncObj.transform.position = Vector3.Lerp(syncObj.transform.position, pos, 0.5f);
+                    syncObj.transform.rotation = Quaternion.Slerp(syncObj.transform.rotation, rot, 0.5f);
+                }
+                var m = syncObj.GetComponent<Cooking.Meat>();
+                if (m != null)
+                {
+                    m.NetworkUpdateProgress(doneness);
+                }
+                return;
+            }
+
 #pragma warning disable CS0618
             var meats = UnityEngine.Object.FindObjectsByType<Cooking.Meat>(FindObjectsInactive.Exclude);
             foreach (var m in meats)
@@ -693,6 +986,7 @@ namespace AsadoSimulator.Multiplayer
                 {
                     m.transform.position = Vector3.Lerp(m.transform.position, pos, 0.5f);
                     m.transform.rotation = Quaternion.Slerp(m.transform.rotation, rot, 0.5f);
+                    m.NetworkUpdateProgress(doneness);
                     break;
                 }
             }
@@ -781,8 +1075,13 @@ namespace AsadoSimulator.Multiplayer
             tmp.alignment = TextAlignmentOptions.Center;
             tmp.raycastTarget = false;
 
+            // 抓取手持挂载点 (HoldPoint: 位于胶囊体前方胸口位置)
+            GameObject holdPointObj = new GameObject("HoldPoint");
+            holdPointObj.transform.SetParent(obj.transform, false);
+            holdPointObj.transform.localPosition = new Vector3(0.3f, 0.2f, 0.55f);
+
             var avatar = obj.AddComponent<RemotePlayerAvatar>();
-            avatar.Initialize(nameObj.transform, playerId, tmp, initialPos, rotY);
+            avatar.Initialize(nameObj.transform, playerId, tmp, initialPos, rotY, holdPointObj.transform);
             return avatar;
         }
 
@@ -833,7 +1132,11 @@ namespace AsadoSimulator.Multiplayer
         Welcome = 3,
         PlayerTransform = 4,
         PlayerLeave = 5,
-        MeatSync = 6
+        MeatSync = 6,
+        ObjectGrab = 7,
+        ObjectDrop = 8,
+        BrazierSync = 9,
+        WorldState = 10
     }
 
     /// <summary>
@@ -847,12 +1150,19 @@ namespace AsadoSimulator.Multiplayer
         private Transform _nameplateTransform;
         private int _playerId;
         private TextMeshPro _nameplateTmp;
+        private Transform _holdPoint;
+        private NetworkSyncObject _heldObject;
 
-        public void Initialize(Transform nameplate, int playerId, TextMeshPro tmp, Vector3 startPos, float startYaw)
+        public int PlayerId => _playerId;
+        public Transform HoldPoint => _holdPoint;
+        public NetworkSyncObject HeldObject => _heldObject;
+
+        public void Initialize(Transform nameplate, int playerId, TextMeshPro tmp, Vector3 startPos, float startYaw, Transform holdPoint)
         {
             _nameplateTransform = nameplate;
             _playerId = playerId;
             _nameplateTmp = tmp;
+            _holdPoint = holdPoint;
             _targetPos = startPos;
             _targetRot = Quaternion.Euler(0f, startYaw, 0f);
             transform.position = startPos;
@@ -862,9 +1172,51 @@ namespace AsadoSimulator.Multiplayer
             UpdateNameplateText(LanguageManager.Instance != null ? LanguageManager.Instance.CurrentLanguage : GameLanguage.Chinese);
         }
 
+        public void HoldObject(NetworkSyncObject obj)
+        {
+            if (obj == null) return;
+            _heldObject = obj;
+            if (obj.Rigidbody != null)
+            {
+                obj.Rigidbody.isKinematic = true;
+            }
+            foreach (var col in obj.GetComponentsInChildren<Collider>())
+            {
+                col.enabled = false;
+            }
+            if (_holdPoint != null)
+            {
+                obj.transform.SetParent(_holdPoint, false);
+                obj.transform.localPosition = Vector3.zero;
+                obj.transform.localRotation = Quaternion.identity;
+            }
+        }
+
+        public void ReleaseObject(NetworkSyncObject obj, Vector3 pos, Quaternion rot, Vector3 vel)
+        {
+            if (_heldObject == obj) _heldObject = null;
+            if (obj == null) return;
+            obj.transform.SetParent(null);
+            obj.transform.position = pos;
+            obj.transform.rotation = rot;
+            foreach (var col in obj.GetComponentsInChildren<Collider>())
+            {
+                col.enabled = true;
+            }
+            if (obj.Rigidbody != null)
+            {
+                obj.Rigidbody.isKinematic = false;
+                obj.Rigidbody.linearVelocity = vel;
+            }
+        }
+
         private void OnDestroy()
         {
             LanguageManager.OnLanguageChanged -= HandleLanguageChanged;
+            if (_heldObject != null)
+            {
+                ReleaseObject(_heldObject, _heldObject.transform.position, _heldObject.transform.rotation, Vector3.zero);
+            }
         }
 
         private void HandleLanguageChanged(GameLanguage lang)

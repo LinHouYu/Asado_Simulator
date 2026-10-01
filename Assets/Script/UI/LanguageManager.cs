@@ -44,9 +44,14 @@ namespace AsadoSimulator.UI
             { "pause_title", new Dictionary<GameLanguage, string> { { GameLanguage.Chinese, "游戏暂停" }, { GameLanguage.Spanish, "Juego Pausado" }, { GameLanguage.English, "Game Paused" } } },
             { "pause_resume", new Dictionary<GameLanguage, string> { { GameLanguage.Chinese, "继续游戏" }, { GameLanguage.Spanish, "Continuar" }, { GameLanguage.English, "Resume" } } },
             { "pause_restart", new Dictionary<GameLanguage, string> { { GameLanguage.Chinese, "重新开始" }, { GameLanguage.Spanish, "Reiniciar" }, { GameLanguage.English, "Restart" } } },
+            { "pause_leave_room", new Dictionary<GameLanguage, string> { { GameLanguage.Chinese, "离开房间" }, { GameLanguage.Spanish, "Salir de la Sala" }, { GameLanguage.English, "Leave Room" } } },
             { "pause_multiplayer", new Dictionary<GameLanguage, string> { { GameLanguage.Chinese, "联机大厅" }, { GameLanguage.Spanish, "Multijugador" }, { GameLanguage.English, "Multiplayer" } } },
             { "pause_settings", new Dictionary<GameLanguage, string> { { GameLanguage.Chinese, "系统设置" }, { GameLanguage.Spanish, "Ajustes" }, { GameLanguage.English, "Settings" } } },
             { "pause_quit", new Dictionary<GameLanguage, string> { { GameLanguage.Chinese, "退出游戏" }, { GameLanguage.Spanish, "Salir del Juego" }, { GameLanguage.English, "Quit Game" } } },
+            { "role_host", new Dictionary<GameLanguage, string> { { GameLanguage.Chinese, "房主" }, { GameLanguage.Spanish, "Anfitrión" }, { GameLanguage.English, "Host" } } },
+            { "role_client", new Dictionary<GameLanguage, string> { { GameLanguage.Chinese, "队员" }, { GameLanguage.Spanish, "Compañero" }, { GameLanguage.English, "Client" } } },
+            { "scoreboard_title", new Dictionary<GameLanguage, string> { { GameLanguage.Chinese, "联机房间玩家列表" }, { GameLanguage.Spanish, "Lista de Jugadores" }, { GameLanguage.English, "Player List" } } },
+            { "scoreboard_single", new Dictionary<GameLanguage, string> { { GameLanguage.Chinese, "单机游戏模式" }, { GameLanguage.Spanish, "Modo Un Jugador" }, { GameLanguage.English, "Single Player" } } },
 
             // 联机大厅
             { "mp_title", new Dictionary<GameLanguage, string> { { GameLanguage.Chinese, "多人联机大厅" }, { GameLanguage.Spanish, "Sala Multijugador" }, { GameLanguage.English, "Multiplayer Lobby" } } },

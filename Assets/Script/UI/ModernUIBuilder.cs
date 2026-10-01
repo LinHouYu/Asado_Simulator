@@ -80,6 +80,9 @@ namespace AsadoSimulator.UI
             // 6. 创建 PauseMenuUI (挂载于 [UI_Canvas] 保证 Update 永不休眠)
             PauseMenuUI pauseUI = CreatePauseMenu(canvasObj, lobbyUI, perfHud);
 
+            // 7. 创建 PlayerScoreboardUI (按住 Tab 弹出玩家计分板/列表)
+            PlayerScoreboardUI scoreboardUI = CreatePlayerScoreboard(canvasObj.transform);
+
             Debug.Log("[ModernUIBuilder] 全套现代 UI 自动构建并绑定完成！ESC 暂停菜单与联机系统已完全就绪。");
             return pauseUI;
         }
@@ -701,6 +704,96 @@ namespace AsadoSimulator.UI
             slider.value = 0f;
 
             return slider;
+        }
+
+        private static PlayerScoreboardUI CreatePlayerScoreboard(Transform parent)
+        {
+            GameObject boardObj = new GameObject("PlayerScoreboardHUD");
+            boardObj.transform.SetParent(parent, false);
+
+            var rt = boardObj.AddComponent<RectTransform>();
+            rt.anchorMin = new Vector2(0.5f, 0.5f);
+            rt.anchorMax = new Vector2(0.5f, 0.5f);
+            rt.pivot = new Vector2(0.5f, 0.5f);
+            rt.sizeDelta = new Vector2(500f, 320f);
+            rt.anchoredPosition = Vector2.zero;
+
+            var bgImg = boardObj.AddComponent<Image>();
+            bgImg.color = new Color(0.08f, 0.10f, 0.14f, 0.92f);
+
+            var cg = boardObj.AddComponent<CanvasGroup>();
+            cg.alpha = 0f;
+            cg.blocksRaycasts = false;
+            cg.interactable = false;
+
+            var font = GetChineseFontAsset();
+
+            // 顶部标题
+            GameObject titleObj = new GameObject("TitleText");
+            titleObj.transform.SetParent(boardObj.transform, false);
+            var titleTmp = titleObj.AddComponent<TextMeshProUGUI>();
+            if (font != null) titleTmp.font = font;
+            titleTmp.fontSize = 20;
+            titleTmp.fontStyle = FontStyles.Bold;
+            titleTmp.text = "🏆 联机房间玩家列表";
+            titleTmp.color = AccentGoldColor;
+            titleTmp.alignment = TextAlignmentOptions.TopLeft;
+            var titleRt = titleObj.GetComponent<RectTransform>();
+            titleRt.anchorMin = new Vector2(0f, 1f);
+            titleRt.anchorMax = new Vector2(1f, 1f);
+            titleRt.pivot = new Vector2(0f, 1f);
+            titleRt.anchoredPosition = new Vector2(20f, -16f);
+            titleRt.sizeDelta = new Vector2(300f, 30f);
+
+            // 人数统计
+            GameObject countObj = new GameObject("CountText");
+            countObj.transform.SetParent(boardObj.transform, false);
+            var countTmp = countObj.AddComponent<TextMeshProUGUI>();
+            if (font != null) countTmp.font = font;
+            countTmp.fontSize = 15;
+            countTmp.text = "在线玩家: 1 人";
+            countTmp.color = new Color(0.7f, 0.8f, 0.9f, 1f);
+            countTmp.alignment = TextAlignmentOptions.TopRight;
+            var countRt = countObj.GetComponent<RectTransform>();
+            countRt.anchorMin = new Vector2(1f, 1f);
+            countRt.anchorMax = new Vector2(1f, 1f);
+            countRt.pivot = new Vector2(1f, 1f);
+            countRt.anchoredPosition = new Vector2(-20f, -18f);
+            countRt.sizeDelta = new Vector2(150f, 30f);
+
+            // 分割线
+            GameObject sepObj = new GameObject("Separator");
+            sepObj.transform.SetParent(boardObj.transform, false);
+            var sepImg = sepObj.AddComponent<Image>();
+            sepImg.color = new Color(1f, 1f, 1f, 0.15f);
+            var sepRt = sepObj.GetComponent<RectTransform>();
+            sepRt.anchorMin = new Vector2(0f, 1f);
+            sepRt.anchorMax = new Vector2(1f, 1f);
+            sepRt.pivot = new Vector2(0.5f, 1f);
+            sepRt.anchoredPosition = new Vector2(0f, -50f);
+            sepRt.sizeDelta = new Vector2(460f, 1.5f);
+
+            // 玩家列表容器 (Vertical Layout Group)
+            GameObject containerObj = new GameObject("ListContainer");
+            containerObj.transform.SetParent(boardObj.transform, false);
+            var containerRt = containerObj.AddComponent<RectTransform>();
+            containerRt.anchorMin = new Vector2(0f, 0f);
+            containerRt.anchorMax = new Vector2(1f, 1f);
+            containerRt.offsetMin = new Vector2(20f, 20f);
+            containerRt.offsetMax = new Vector2(-20f, -60f);
+
+            var vlg = containerObj.AddComponent<VerticalLayoutGroup>();
+            vlg.spacing = 8f;
+            vlg.childAlignment = TextAnchor.UpperCenter;
+            vlg.childControlWidth = true;
+            vlg.childControlHeight = false;
+            vlg.childForceExpandWidth = true;
+            vlg.childForceExpandHeight = false;
+
+            var scoreboard = boardObj.AddComponent<PlayerScoreboardUI>();
+            scoreboard.InitializeReferences(cg, rt, titleTmp, countTmp, containerObj.transform);
+
+            return scoreboard;
         }
 
         #endregion

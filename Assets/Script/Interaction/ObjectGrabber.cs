@@ -1,6 +1,7 @@
 using System;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using AsadoSimulator.Multiplayer;
 
 namespace AsadoSimulator.Interaction
 {
@@ -334,6 +335,7 @@ namespace AsadoSimulator.Interaction
                 float rawDist = grabbable.CustomHoldDistance > 0f ? grabbable.CustomHoldDistance : defaultHoldDistance;
                 _currentHoldDistance = Mathf.Max(minHoldDistance, rawDist);
                 _heldGrabbable.OnGrab(playerCollider);
+                NetworkSyncObject.NotifyGrab(_heldGrabbable.gameObject);
             }
             else if (hitObject.TryGetComponent<Rigidbody>(out var rb) || (rb = hitObject.GetComponentInParent<Rigidbody>()) != null)
             {
@@ -341,6 +343,7 @@ namespace AsadoSimulator.Interaction
                 _heldRigidbody = rb;
                 _currentHoldDistance = Mathf.Max(minHoldDistance, defaultHoldDistance);
                 SetupFallbackGrabPhysics(rb);
+                NetworkSyncObject.NotifyGrab(rb.gameObject);
             }
             else
             {
@@ -386,6 +389,7 @@ namespace AsadoSimulator.Interaction
             if (!IsHoldingObject) return;
 
             Vector3 releaseVelocity = _heldRigidbody.linearVelocity;
+            GameObject droppedObj = _heldGrabbable != null ? _heldGrabbable.gameObject : (_heldRigidbody != null ? _heldRigidbody.gameObject : null);
 
             if (_heldGrabbable != null)
             {
@@ -394,6 +398,11 @@ namespace AsadoSimulator.Interaction
             else
             {
                 RestoreFallbackGrabPhysics(releaseVelocity);
+            }
+
+            if (droppedObj != null)
+            {
+                NetworkSyncObject.NotifyDrop(droppedObj, releaseVelocity);
             }
 
             _heldRigidbody = null;

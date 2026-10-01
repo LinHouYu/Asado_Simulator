@@ -376,10 +376,24 @@ namespace AsadoSimulator.UI
         public void RestartGame()
         {
             Time.timeScale = 1.0f;
-            if (AsadoNetworkManager.Instance != null)
+            var net = AsadoNetworkManager.Instance;
+            if (net != null && net.IsNetworkActive)
             {
-                AsadoNetworkManager.Instance.StopGame();
+                if (!net.IsHost)
+                {
+                    // 客户端队员点击：安全退出联机房间，绝不重置房主世界！
+                    Debug.Log("[PauseMenuUI] 客户端队员退出房间，断开网络连接回到本地状态。");
+                    net.StopGame();
+                    ResumeGame();
+                    return;
+                }
+                else
+                {
+                    // 房主点击：关闭网络服务后重载当前场景
+                    net.StopGame();
+                }
             }
+
             SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
         }
 
@@ -499,9 +513,36 @@ namespace AsadoSimulator.UI
 
         private void RefreshLocalizedTexts(GameLanguage lang)
         {
-            if (titleText != null) titleText.text = LanguageManager.T("pause_title");
+            var net = AsadoNetworkManager.Instance;
+            bool isMultiplayer = net != null && net.IsNetworkActive;
+            bool isHost = isMultiplayer && net.IsHost;
+            bool isClient = isMultiplayer && !isHost;
+
+            if (titleText != null)
+            {
+                string baseTitle = LanguageManager.T("pause_title");
+                if (isHost)
+                {
+                    titleText.text = $"{baseTitle} <size=65%><color=#F1C40F>[👑 {LanguageManager.T("role_host")}]</color></size>";
+                }
+                else if (isClient)
+                {
+                    titleText.text = $"{baseTitle} <size=65%><color=#3498DB>[🎮 {LanguageManager.T("role_client")} #{net.LocalPlayerId}]</color></size>";
+                }
+                else
+                {
+                    titleText.text = baseTitle;
+                }
+            }
+
             if (resumeText != null) resumeText.text = LanguageManager.T("pause_resume");
-            if (restartText != null) restartText.text = LanguageManager.T("pause_restart");
+
+            if (restartText != null)
+            {
+                // 若为联机客户端队员，显示“离开房间”以防误触导致世界重置
+                restartText.text = isClient ? LanguageManager.T("pause_leave_room") : LanguageManager.T("pause_restart");
+            }
+
             if (multiplayerText != null) multiplayerText.text = LanguageManager.T("pause_multiplayer");
             if (settingsText != null) settingsText.text = LanguageManager.T("pause_settings");
             if (quitText != null) quitText.text = LanguageManager.T("pause_quit");

@@ -145,6 +145,7 @@ namespace AsadoSimulator.UI
             AsadoNetworkManager.OnClientConnectedEvent += HandleClientConnected;
             AsadoNetworkManager.OnClientDisconnectedEvent += HandleClientDisconnected;
             AsadoNetworkManager.OnNetworkErrorEvent += HandleNetworkError;
+            AsadoNetworkManager.OnWorldSyncCompletedEvent += HandleWorldSyncCompleted;
         }
 
         private void OnDestroy()
@@ -159,6 +160,7 @@ namespace AsadoSimulator.UI
             AsadoNetworkManager.OnClientConnectedEvent -= HandleClientConnected;
             AsadoNetworkManager.OnClientDisconnectedEvent -= HandleClientDisconnected;
             AsadoNetworkManager.OnNetworkErrorEvent -= HandleNetworkError;
+            AsadoNetworkManager.OnWorldSyncCompletedEvent -= HandleWorldSyncCompleted;
         }
 
         private System.Action _onCloseCallback;
@@ -180,6 +182,17 @@ namespace AsadoSimulator.UI
             Cursor.visible = true;
 
             RefreshLocalizedTexts(LanguageManager.Instance != null ? LanguageManager.Instance.CurrentLanguage : GameLanguage.Chinese);
+
+            // 打开大厅时，根据当前实际网络状态刷新状态文本，杜绝残留‘正在同步’
+            if (AsadoNetworkManager.Instance != null && AsadoNetworkManager.Instance.IsNetworkActive)
+            {
+                UpdateStatus(AsadoNetworkManager.Instance.IsHost ? "✅ 正在作为房主运行" : "✅ 已经连入房间");
+            }
+            else
+            {
+                UpdateStatus(LanguageManager.T("mp_ready"));
+            }
+
             StartCoroutine(ModernUIAnimationHelper.AnimatePopIn(lobbyWindowRect, lobbyCanvasGroup, 0.22f));
 
             if (AutoJoinDetector.Instance != null && (AsadoNetworkManager.Instance == null || !AsadoNetworkManager.Instance.IsNetworkActive))
@@ -338,11 +351,34 @@ namespace AsadoSimulator.UI
 
         private void HandleClientConnected()
         {
-            UpdateStatus("✅ 已成功连入房间！正在同步游戏世界...");
+            if (AsadoNetworkManager.Instance != null && AsadoNetworkManager.Instance.IsHost)
+            {
+                UpdateStatus("✅ 房间创建成功！等待玩家加入...");
+                CancelInvoke(nameof(Hide));
+                if (gameObject.activeInHierarchy)
+                {
+                    Invoke(nameof(Hide), 0.8f);
+                }
+            }
+            else
+            {
+                UpdateStatus("✅ 已成功连入房间！正在同步游戏世界...");
+                // 备用超时保护：若2.5秒内未收到WorldState包，也自动隐藏大厅，绝不永久锁死
+                CancelInvoke(nameof(Hide));
+                if (gameObject.activeInHierarchy)
+                {
+                    Invoke(nameof(Hide), 2.5f);
+                }
+            }
+        }
+
+        private void HandleWorldSyncCompleted()
+        {
+            UpdateStatus("✅ 世界同步完成！游戏已就绪");
             CancelInvoke(nameof(Hide));
             if (gameObject.activeInHierarchy)
             {
-                Invoke(nameof(Hide), 1.0f);
+                Invoke(nameof(Hide), 0.5f);
             }
         }
 

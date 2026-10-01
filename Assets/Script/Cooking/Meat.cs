@@ -32,6 +32,7 @@ namespace AsadoSimulator.Cooking
         [Tooltip("当前熟度进度 (0.0: 全生, 0.5: 完美烤熟, 1.0: 焦炭)")]
         [Range(0f, 1f)]
         [SerializeField] private float cookProgress = 0f;
+        public bool IsBurnt => cookProgress >= 1.0f;
 
         [Tooltip("基础烤制速度（每秒增加的熟度，0.05 约等于 10 秒烤熟，20 秒焦糊）")]
         [SerializeField] private float cookSpeed = 0.05f;
@@ -234,12 +235,46 @@ namespace AsadoSimulator.Cooking
             }
         }
 
+        private float _syncMeatTimer = 0f;
+
+        /// <summary>
+        /// 网络同步更新熟度进度与外观
+        /// </summary>
+        public void NetworkUpdateProgress(float progress)
+        {
+            float delta = progress - cookProgress;
+            if (delta > 0.001f)
+            {
+                ApplyHeat(delta);
+            }
+            else
+            {
+                cookProgress = Mathf.Clamp01(progress);
+                UpdateMeatAppearance(cookProgress);
+                if (cookSlider != null) cookSlider.value = cookProgress;
+            }
+        }
+
         private void Update()
         {
             // 只有当所在的 Grill 处于加热状态，并且还未达到完全烧焦时，才继续烤制
             if (IsOnHeatingGrill && cookProgress < 1.0f)
             {
                 ApplyHeat(cookSpeed * Time.deltaTime);
+
+                // 联机模式下由房主周期性广播烤肉熟度状态
+                var net = Multiplayer.AsadoNetworkManager.Instance;
+                if (net != null && net.IsNetworkActive && net.IsHost)
+                {
+                    _syncMeatTimer += Time.deltaTime;
+                    if (_syncMeatTimer >= 0.2f)
+                    {
+                        _syncMeatTimer = 0f;
+                        var sync = GetComponent<Multiplayer.NetworkSyncObject>();
+                        int syncId = sync != null ? sync.SyncId : gameObject.GetInstanceID();
+                        net.BroadcastMeatState(syncId, transform.position, transform.rotation, cookProgress, cookProgress >= 1f);
+                    }
+                }
             }
 
             // 更新 UI 显隐逻辑

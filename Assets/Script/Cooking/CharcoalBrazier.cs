@@ -204,6 +204,38 @@ namespace AsadoSimulator.Cooking
             }
         }
 
+        private float _networkBrazierSyncTimer = 0f;
+
+        /// <summary>
+        /// 网络同步火盆状态 (木炭数、平稳状态、燃烧状态、燃烧进度)
+        /// </summary>
+        public void NetworkUpdateBrazier(int count, bool isSettling, bool isBurning, float progress)
+        {
+            if (isBurning)
+            {
+                _isBurning = true;
+                _isSettling = false;
+                _burnTimer = progress * burnDuration;
+                SetTextVisible(false);
+                if (burnProgressSlider != null)
+                {
+                    burnProgressSlider.gameObject.SetActive(true);
+                    burnProgressSlider.value = progress;
+                }
+            }
+            else
+            {
+                _isBurning = false;
+                _isSettling = isSettling;
+                if (burnProgressSlider != null) burnProgressSlider.gameObject.SetActive(false);
+                SetTextVisible(true);
+                if (countTextTMP != null)
+                {
+                    countTextTMP.text = $"{count}/{requiredCharcoalCount}";
+                }
+            }
+        }
+
         private void Update()
         {
             // 1. 等待木炭平稳落地倒计时
@@ -226,6 +258,18 @@ namespace AsadoSimulator.Cooking
             if (_isBurning)
             {
                 UpdateBurningProgress();
+            }
+
+            // 3. 联机模式下由房主周期性广播火盆状态
+            var net = Multiplayer.AsadoNetworkManager.Instance;
+            if (net != null && net.IsNetworkActive && net.IsHost)
+            {
+                _networkBrazierSyncTimer += Time.deltaTime;
+                if (_networkBrazierSyncTimer >= 0.25f)
+                {
+                    _networkBrazierSyncTimer = 0f;
+                    net.BroadcastBrazierState(_collectedCharcoals.Count, _isSettling, _isBurning, BurnProgress);
+                }
             }
         }
 
