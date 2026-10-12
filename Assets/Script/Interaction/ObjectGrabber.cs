@@ -5,85 +5,39 @@ using AsadoSimulator.Multiplayer;
 
 namespace AsadoSimulator.Interaction
 {
-    /// <summary>
-    /// Standalone Portal-style physics object grabbing system designed for empty Prefab usage.
-    /// Features:
-    /// - Ultra-smooth position & rotation tracking during movement (no jitter/stutter).
-    /// - Smooth interpolation towards the crosshair (local X=0, Y=0) upon pickup.
-    /// - Table collider anti-embedding & jitter prevention (lift-off + obstacle sweep clamping).
-    /// - Leveling pitch/roll (X=0, Z=0 tilt flattened) + R-key Y-axis rotation.
-    /// - Drop placement preview ray with landing marker on tables/floors.
-    /// - Tag-filtered interaction for kitchen simulation.
-    /// </summary>
     [DisallowMultipleComponent]
     public class ObjectGrabber : MonoBehaviour
     {
         [Header("Camera & References")]
-        [Tooltip("Player camera. If null, automatically locates Camera.main.")]
         [SerializeField] private Camera playerCamera;
-
-        [Tooltip("Player collider or character controller. If null, automatically located.")]
         [SerializeField] private Collider playerCollider;
 
         [Header("Tag & Target Filtering")]
-        [Tooltip("Target tag required for an object to be grabbable.")]
         [SerializeField] private string targetTag = "Grabbable";
-
-        [Tooltip("If true, only objects with matching tag can be grabbed.")]
         [SerializeField] private bool requireTagMatch = true;
-
-        [Tooltip("Maximum reach distance to grab an object.")]
         [SerializeField] private float grabRange = 2.8f;
-
-        [Tooltip("Layer mask for raycast detection.")]
         [SerializeField] private LayerMask grabLayerMask = ~0;
 
         [Header("Hold & Smooth Settings")]
-        [Tooltip("Default distance held object floats in front of camera.")]
         [SerializeField] private float defaultHoldDistance = 1.6f;
-
-        [Tooltip("Minimum allowable hold distance to prevent clipping into player.")]
         [SerializeField] private float minHoldDistance = 0.8f;
-
-        [Tooltip("Duration in seconds for the smooth glide from pickup point to crosshair center.")]
         [SerializeField] private float pickupSmoothDuration = 0.22f;
-
-        [Tooltip("Position smoothing time when player moves/turns while holding object (eliminates stutter).")]
-        [Range(0.01f, 0.15f)]
-        [SerializeField] private float followSmoothTime = 0.035f;
-
-        [Tooltip("Rotation smoothing time when turning camera or rotating with R key.")]
-        [Range(0.01f, 0.15f)]
-        [SerializeField] private float rotateSmoothTime = 0.04f;
-
-        [Tooltip("Physics spring force pulling the held object towards target.")]
+        [Range(0.01f, 0.15f)][SerializeField] private float followSmoothTime = 0.035f;
+        [Range(0.01f, 0.15f)][SerializeField] private float rotateSmoothTime = 0.04f;
         [SerializeField] private float holdSpringForce = 22f;
-
-        [Tooltip("Maximum linear speed of held object.")]
         [SerializeField] private float maxHoldSpeed = 12f;
-
-        [Tooltip("Distance threshold at which the hold automatically breaks.")]
         [SerializeField] private float breakDistance = 2.4f;
 
         [Header("Obstacle Layers")]
-        [Tooltip("Layers treated as solid obstacles for landing marker.")]
         [SerializeField] private LayerMask obstacleLayerMask = ~0;
 
         [Header("Rotation Settings (R Key)")]
-        [Tooltip("Speed in degrees per second for rotating the held object around Y axis.")]
         [SerializeField] private float rKeyRotateSpeed = 135f;
 
         [Header("Placement Preview (Landing Red Dot)")]
-        [Tooltip("Whether to display the drop landing preview red dot on colliders below.")]
         [SerializeField] private bool showPlacementPreview = true;
-
-        [Tooltip("Maximum downward raycast distance for landing preview.")]
         [SerializeField] private float maxPreviewDropDistance = 4f;
-
-        [Tooltip("Color of the landing target dot (Default: Red).")]
         [SerializeField] private Color landingMarkerColor = new Color(1f, 0.1f, 0.1f, 0.95f);
-
-        [Tooltip("Size/Diameter of the landing red dot marker in meters.")]
         [SerializeField] private float landingMarkerSize = 0.05f;
 
         // State Tracking
@@ -92,24 +46,22 @@ namespace AsadoSimulator.Interaction
         private Collider[] _heldColliders;
         private float _currentHoldDistance;
         private float _heldObjectRadius = 0.2f;
+        
+        // --- 新增：用于跟踪当前注视/抓取的带有高亮组件的物体 ---
+        private ItemHighlight _currentHoveredItem;
+        private ItemHighlight _heldItem;
 
-        // Smooth Movement & Tracking State
         private Vector3 _smoothedHoldTargetPos;
         private Vector3 _posSmoothVelocity;
         private Vector3 _velSmoothVelocity;
         private float _currentSmoothedDistance;
         private float _currentYaw;
         private float _yawSmoothVelocity;
-
-        // Smooth Pickup State
         private bool _isPickupSmoothing;
         private float _pickupTimer;
         private Vector3 _pickupStartWorldPos;
-
-        // Orientation State
         private float _heldYAngleOffset;
 
-        // Fallback Physics State (when prop lacks GrabbableObject script)
         private bool _fallbackCachedGravity;
         private float _fallbackCachedLinearDamping;
         private float _fallbackCachedAngularDamping;
@@ -120,11 +72,9 @@ namespace AsadoSimulator.Interaction
         private int _fallbackCachedSolverIterations;
         private int _fallbackCachedSolverVelocityIterations;
 
-        // Placement Preview Components (Small Red Dot on Collider)
         private GameObject _landingMarkerObj;
         private MeshRenderer _landingMarkerRenderer;
 
-        // Raycast Hover State (for crosshair)
         public bool IsAimingAtGrabbable { get; private set; }
         public bool IsHoldingObject => _heldRigidbody != null;
         public Rigidbody HeldRigidbody => _heldRigidbody;
@@ -156,7 +106,6 @@ namespace AsadoSimulator.Interaction
 
         private void SetupPlacementPreviewVisuals()
         {
-            // Setup small landing red dot marker on collider surfaces (pure visual mesh, zero collider)
             _landingMarkerObj = new GameObject("LandingMarkerDot");
             _landingMarkerObj.transform.SetParent(transform);
             var meshFilter = _landingMarkerObj.AddComponent<MeshFilter>();
@@ -190,10 +139,7 @@ namespace AsadoSimulator.Interaction
 
         private void EnsureCameraReference()
         {
-            if (playerCamera == null)
-            {
-                playerCamera = Camera.main;
-            }
+            if (playerCamera == null) playerCamera = Camera.main;
         }
 
         #region Hover & Input
@@ -201,12 +147,34 @@ namespace AsadoSimulator.Interaction
         private void UpdateRaycastHoverState()
         {
             IsAimingAtGrabbable = false;
+            ItemHighlight newHoveredItem = null;
 
-            if (playerCamera == null || IsHoldingObject) return;
-
-            if (RaycastForGrabbable(out _))
+            if (playerCamera != null && !IsHoldingObject)
             {
-                IsAimingAtGrabbable = true;
+                if (RaycastForGrabbable(out RaycastHit hit))
+                {
+                    IsAimingAtGrabbable = true;
+                    // 尝试获取目标物体上的高亮组件
+                    newHoveredItem = hit.collider.GetComponentInParent<ItemHighlight>();
+                }
+            }
+
+            // 处理视线移入/移出逻辑
+            if (newHoveredItem != _currentHoveredItem)
+            {
+                // 移开上一个物体时，清除悬停状态
+                if (_currentHoveredItem != null)
+                {
+                    _currentHoveredItem.SetHover(false);
+                }
+                
+                _currentHoveredItem = newHoveredItem;
+                
+                // 看向新物体时，设置悬停状态
+                if (_currentHoveredItem != null)
+                {
+                    _currentHoveredItem.SetHover(true);
+                }
             }
         }
 
@@ -231,79 +199,48 @@ namespace AsadoSimulator.Interaction
                     bestHit = h;
                     return true;
                 }
-
-                // If blocked by a solid obstacle (not a trigger), block line of sight
                 if (!h.collider.isTrigger)
                 {
                     return false;
                 }
             }
-
             return false;
         }
 
         private bool IsTargetGrabbable(GameObject target)
         {
             if (target == null) return false;
-
             if (target.TryGetComponent<GrabbableObject>(out var grabbable) || (grabbable = target.GetComponentInParent<GrabbableObject>()) != null)
             {
                 return !requireTagMatch || grabbable.CanGrabWithTag(targetTag);
             }
-
             if (target.TryGetComponent<Rigidbody>(out var rb) || (rb = target.GetComponentInParent<Rigidbody>()) != null)
             {
                 return !requireTagMatch || SafeCompareTag(target, targetTag) || SafeCompareTag(rb.gameObject, targetTag);
             }
-
             return false;
         }
 
         private bool SafeCompareTag(GameObject obj, string tagToCompare)
         {
             if (string.IsNullOrEmpty(tagToCompare)) return true;
-            try
-            {
-                return obj.CompareTag(tagToCompare);
-            }
-            catch
-            {
-                return obj.tag == tagToCompare;
-            }
+            try { return obj.CompareTag(tagToCompare); }
+            catch { return obj.tag == tagToCompare; }
         }
 
         private void HandleInput()
         {
             var mouse = Mouse.current;
             if (mouse == null) return;
-
-            // Left Click -> Grab
-            if (mouse.leftButton.wasPressedThisFrame)
-            {
-                if (!IsHoldingObject)
-                {
-                    TryGrabObject();
-                }
-            }
-
-            // Right Click -> Drop
-            if (mouse.rightButton.wasPressedThisFrame)
-            {
-                if (IsHoldingObject)
-                {
-                    DropObject();
-                }
-            }
+            if (mouse.leftButton.wasPressedThisFrame && !IsHoldingObject) TryGrabObject();
+            if (mouse.rightButton.wasPressedThisFrame && IsHoldingObject) DropObject();
         }
 
         private void HandleRotationInput()
         {
             if (!IsHoldingObject) return;
-
             var keyboard = Keyboard.current;
             if (keyboard == null) return;
-
-            // Rotate Y axis while holding R
             if (keyboard.rKey.isPressed)
             {
                 float dir = keyboard.leftShiftKey.isPressed ? -1f : 1f;
@@ -319,7 +256,6 @@ namespace AsadoSimulator.Interaction
         private void TryGrabObject()
         {
             if (playerCamera == null) return;
-
             if (!RaycastForGrabbable(out RaycastHit hit)) return;
 
             GameObject hitObject = hit.collider.gameObject;
@@ -352,10 +288,14 @@ namespace AsadoSimulator.Interaction
 
             if (_heldRigidbody == null) return;
 
-            // 1. Calculate true world collider center directly from the object's real colliders
-            Vector3 initialColliderCenter = GetRealColliderCenterWorld(_heldRigidbody);
+            // --- 新增：通知高亮组件已被抓取，锁定状态 ---
+            _heldItem = _heldRigidbody.GetComponent<ItemHighlight>();
+            if (_heldItem != null)
+            {
+                _heldItem.SetGrabbed(true);
+            }
 
-            // Measure object bounding radius from the colliders in world space
+            Vector3 initialColliderCenter = GetRealColliderCenterWorld(_heldRigidbody);
             _heldColliders = _heldRigidbody.GetComponentsInChildren<Collider>();
             Bounds bounds = new Bounds(initialColliderCenter, Vector3.zero);
             if (_heldColliders != null)
@@ -367,7 +307,6 @@ namespace AsadoSimulator.Interaction
             }
             _heldObjectRadius = Mathf.Clamp(bounds.extents.magnitude * 0.5f, 0.05f, 0.8f);
 
-            // 2. Smooth Pickup setup: start directly from the object's true collider center
             _isPickupSmoothing = true;
             _pickupTimer = 0f;
             _pickupStartWorldPos = initialColliderCenter;
@@ -376,7 +315,6 @@ namespace AsadoSimulator.Interaction
             _velSmoothVelocity = Vector3.zero;
             _currentSmoothedDistance = _currentHoldDistance;
 
-            // 3. Orientation leveling: flatten pitch (X) and roll (Z) to 0, keep horizontal alignment
             float cameraYaw = playerCamera.transform.eulerAngles.y;
             float objectInitialYaw = _heldRigidbody.rotation.eulerAngles.y;
             _heldYAngleOffset = Mathf.DeltaAngle(cameraYaw, objectInitialYaw);
@@ -391,56 +329,43 @@ namespace AsadoSimulator.Interaction
             Vector3 releaseVelocity = _heldRigidbody.linearVelocity;
             GameObject droppedObj = _heldGrabbable != null ? _heldGrabbable.gameObject : (_heldRigidbody != null ? _heldRigidbody.gameObject : null);
 
-            if (_heldGrabbable != null)
-            {
-                _heldGrabbable.OnDrop(releaseVelocity);
-            }
-            else
-            {
-                RestoreFallbackGrabPhysics(releaseVelocity);
-            }
+            if (_heldGrabbable != null) _heldGrabbable.OnDrop(releaseVelocity);
+            else RestoreFallbackGrabPhysics(releaseVelocity);
 
-            if (droppedObj != null)
+            if (droppedObj != null) NetworkSyncObject.NotifyDrop(droppedObj, releaseVelocity);
+
+            // --- 新增：解除高亮锁定，如果准星还在上面则恢复悬停 ---
+            if (_heldItem != null)
             {
-                NetworkSyncObject.NotifyDrop(droppedObj, releaseVelocity);
+                _heldItem.SetGrabbed(false);
+                // 强制更新一次当前悬停目标以防止状态卡住
+                if (_heldItem == _currentHoveredItem)
+                {
+                    _heldItem.SetHover(true);
+                }
+                _heldItem = null;
             }
 
             _heldRigidbody = null;
             _heldGrabbable = null;
             _heldColliders = null;
             _isPickupSmoothing = false;
-
             HidePlacementPreview();
         }
 
-        /// <summary>
-        /// Gets the true geometric center of all active colliders on the Rigidbody in WORLD space.
-        /// Automatically accounts for all child transforms, parent/root scales, and collider center offsets.
-        /// </summary>
         private Vector3 GetRealColliderCenterWorld(Rigidbody rb)
         {
             if (rb == null) return Vector3.zero;
-
             Collider[] colliders = rb.GetComponentsInChildren<Collider>();
             Bounds combinedBounds = new Bounds();
             bool hasBounds = false;
-
             for (int i = 0; i < colliders.Length; i++)
             {
                 var col = colliders[i];
                 if (col == null || !col.enabled || !col.gameObject.activeInHierarchy || col.isTrigger) continue;
-
-                if (!hasBounds)
-                {
-                    combinedBounds = col.bounds;
-                    hasBounds = true;
-                }
-                else
-                {
-                    combinedBounds.Encapsulate(col.bounds);
-                }
+                if (!hasBounds) { combinedBounds = col.bounds; hasBounds = true; }
+                else combinedBounds.Encapsulate(col.bounds);
             }
-
             return hasBounds ? combinedBounds.center : rb.position;
         }
 
@@ -448,44 +373,27 @@ namespace AsadoSimulator.Interaction
 
         #region Ultra-Smooth Hold & Physics
 
-        /// <summary>
-        /// Runs in Update() at full display refresh rate (60/144/240Hz) to track camera smoothly.
-        /// </summary>
         private void ComputeSmoothHoldTarget()
         {
             if (!IsHoldingObject || playerCamera == null) return;
-
             Vector3 camPos = playerCamera.transform.position;
             Vector3 camForward = playerCamera.transform.forward;
-
-            // Target position is held directly at the crosshair center coordinate at designated hold distance
-            // No surrounding sweep or ground push, preventing jitter/jumping in narrow spaces like grills
             Vector3 idealTargetPos = camPos + camForward * _currentHoldDistance;
-
-            // 3. Smooth Pickup Interpolation
             Vector3 rawAnchorPos = idealTargetPos;
+
             if (_isPickupSmoothing)
             {
                 _pickupTimer += Time.deltaTime;
                 float progress = Mathf.Clamp01(_pickupTimer / pickupSmoothDuration);
                 float eased = 1f - Mathf.Pow(1f - progress, 3f);
-
                 rawAnchorPos = Vector3.Lerp(_pickupStartWorldPos, idealTargetPos, eased);
-
-                if (progress >= 1f)
-                {
-                    _isPickupSmoothing = false;
-                }
+                if (progress >= 1f) _isPickupSmoothing = false;
             }
 
-            // 4. Smooth Target Position (SmoothDamp eliminates camera tracking micro-stutters!)
             _smoothedHoldTargetPos = Vector3.SmoothDamp(_smoothedHoldTargetPos, rawAnchorPos, ref _posSmoothVelocity, followSmoothTime);
-
-            // 5. Smooth Yaw Rotation (eliminates angular judder while turning camera or pressing R)
             float desiredYaw = playerCamera.transform.eulerAngles.y + _heldYAngleOffset;
             _currentYaw = Mathf.SmoothDampAngle(_currentYaw, desiredYaw, ref _yawSmoothVelocity, rotateSmoothTime);
 
-            // Prevent target yaw from winding up endlessly if physical obstacle blocks rotation
             if (_heldRigidbody != null)
             {
                 float currentPhysYaw = _heldRigidbody.rotation.eulerAngles.y;
@@ -499,33 +407,24 @@ namespace AsadoSimulator.Interaction
             }
         }
 
-        /// <summary>
-        /// Runs in FixedUpdate() to apply physics forces and collision checks.
-        /// Uses PD Force and Torque to ensure realistic collision constraint solving with zero jitter.
-        /// </summary>
         private void UpdateHeldObjectPhysics()
         {
             if (!IsHoldingObject || _heldRigidbody == null) return;
-
-            // Query the true geometric center of all colliders in world space
             Vector3 currentColliderCenter = GetRealColliderCenterWorld(_heldRigidbody);
-
-            // 1. Break Distance Check (measured from true collider center to crosshair target)
             Vector3 displacement = _smoothedHoldTargetPos - currentColliderCenter;
+            
             if (displacement.sqrMagnitude > breakDistance * breakDistance)
             {
                 DropObject();
                 return;
             }
 
-            // 2. Physics PD Linear Acceleration (Participates in PhysX collision solver; cancels out cleanly on collision surfaces)
             Vector3 desiredVelocity = Vector3.ClampMagnitude(displacement * holdSpringForce, maxHoldSpeed);
             Vector3 currentVelocity = _heldRigidbody.linearVelocity;
             Vector3 linearAccel = (desiredVelocity - currentVelocity) / 0.035f;
             linearAccel = Vector3.ClampMagnitude(linearAccel, 140f);
             _heldRigidbody.AddForce(linearAccel, ForceMode.Acceleration);
 
-            // 3. Physics Torque Rotation (Rotates around center of mass; stops naturally at obstacles without violent penetration)
             Quaternion targetRot = Quaternion.Euler(0f, _currentYaw, 0f);
             Quaternion deltaRot = targetRot * Quaternion.Inverse(_heldRigidbody.rotation);
             deltaRot.ToAngleAxis(out float angleInDegrees, out Vector3 axis);
@@ -559,7 +458,6 @@ namespace AsadoSimulator.Interaction
                 return;
             }
 
-            // Drop ray originates from the bottom of the held object's colliders
             Vector3 center = GetRealColliderCenterWorld(_heldRigidbody);
             float bottomY = center.y;
             if (_heldColliders != null)
@@ -567,31 +465,23 @@ namespace AsadoSimulator.Interaction
                 for (int i = 0; i < _heldColliders.Length; i++)
                 {
                     var c = _heldColliders[i];
-                    if (c != null && c.enabled && !c.isTrigger)
-                    {
-                        bottomY = Mathf.Min(bottomY, c.bounds.min.y);
-                    }
+                    if (c != null && c.enabled && !c.isTrigger) bottomY = Mathf.Min(bottomY, c.bounds.min.y);
                 }
             }
 
-            Vector3 rayStart = new Vector3(center.x, bottomY - 0.005f, center.z);
+            Vector3 rayStart = new Vector3(center.x, bottomY + 0.005f, center.z);
             Ray dropRay = new Ray(rayStart, Vector3.down);
 
-            // Cast downward to hit solid physics Colliders (ignoring Triggers)
             if (Physics.Raycast(dropRay, out RaycastHit hit, maxPreviewDropDistance, obstacleLayerMask, QueryTriggerInteraction.Ignore))
             {
-                if (hit.collider.gameObject != _heldRigidbody.gameObject &&
-                    hit.collider != playerCollider &&
-                    !hit.collider.transform.IsChildOf(_heldRigidbody.transform))
+                if (hit.collider.gameObject != _heldRigidbody.gameObject && hit.collider != playerCollider && !hit.collider.transform.IsChildOf(_heldRigidbody.transform))
                 {
                     _landingMarkerObj.SetActive(true);
-                    // Place red dot directly on collider surface with slight offset along normal to prevent Z-fighting
                     _landingMarkerObj.transform.position = hit.point + hit.normal * 0.002f;
                     _landingMarkerObj.transform.rotation = Quaternion.FromToRotation(Vector3.up, hit.normal);
                     return;
                 }
             }
-
             HidePlacementPreview();
         }
 
@@ -620,8 +510,8 @@ namespace AsadoSimulator.Interaction
             rb.linearDamping = 10f;
             rb.angularDamping = 10f;
             rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
-            rb.interpolation = RigidbodyInterpolation.Interpolate; // Essential for smooth movement!
-            rb.maxDepenetrationVelocity = 1.5f; // Suppresses explosive flinging
+            rb.interpolation = RigidbodyInterpolation.Interpolate;
+            rb.maxDepenetrationVelocity = 1.5f;
             rb.maxAngularVelocity = 15f;
             rb.solverIterations = 14;
             rb.solverVelocityIterations = 6;
@@ -639,7 +529,6 @@ namespace AsadoSimulator.Interaction
         private void RestoreFallbackGrabPhysics(Vector3 releaseVelocity)
         {
             if (_heldRigidbody == null) return;
-
             _heldRigidbody.useGravity = _fallbackCachedGravity;
             _heldRigidbody.linearDamping = _fallbackCachedLinearDamping;
             _heldRigidbody.angularDamping = _fallbackCachedAngularDamping;
@@ -666,10 +555,7 @@ namespace AsadoSimulator.Interaction
 
         private void OnDestroy()
         {
-            if (_landingMarkerObj != null)
-            {
-                Destroy(_landingMarkerObj);
-            }
+            if (_landingMarkerObj != null) Destroy(_landingMarkerObj);
         }
     }
 }

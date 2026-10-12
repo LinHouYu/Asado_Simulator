@@ -1,0 +1,23 @@
+newmtl Mat_0_asado_charcoal_ember
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd asado_charcoal_ember.png
+
+newmtl Mat_1_asado_charcoal_hotcore
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd asado_charcoal_hotcore.png
+
+newmtl Mat_2_asado_charcoal_crust
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd asado_charcoal_crust.png

@@ -1,0 +1,374 @@
+; FBX 7.3.0 project file
+; Created by Blockbench FBX Exporter
+; ----------------------------------------------------
+
+FBXHeaderExtension:  {
+	FBXHeaderVersion: 1003
+	FBXVersion: 7300
+	CreationTimeStamp:  {
+		Version: 1000
+		Year: 2026
+		Month: 10
+		Day: 8
+		Hour: 22
+		Minute: 0
+		Second: 0
+		Millisecond: 0
+	}
+	Creator: "Blockbench 5.1.6"
+}
+FileId: "iVAsado"
+CreationTime: "2026-10-08 22:00:00:000"
+Creator: "Made with Blockbench"
+GlobalSettings:  {
+	Version: 1000
+	Properties70:  {
+		P: "UpAxis", "int", "Integer", "",1
+		P: "UpAxisSign", "int", "Integer", "",1
+		P: "FrontAxis", "int", "Integer", "",2
+		P: "FrontAxisSign", "int", "Integer", "",1
+		P: "CoordAxis", "int", "Integer", "",0
+		P: "CoordAxisSign", "int", "Integer", "",1
+		P: "UnitScaleFactor", "double", "Number", "",1
+	}
+}
+Documents:  {
+	Count: 1
+	Document: 743304056 {
+		Scene: "Scene"
+		RootNode: 0
+	}
+}
+References: 
+Definitions:  {
+	Version: 100
+	Count: 16
+	ObjectType: "GlobalSettings" { Count: 1 }
+	ObjectType: "Model" {
+		Count: 3
+		PropertyTemplate: "FbxNode" {
+			Properties70:  {
+				P: "RotationActive", "bool", "", "",0
+				P: "Lcl Translation", "Lcl Translation", "", "A",0,0,0
+				P: "Lcl Rotation", "Lcl Rotation", "", "A",0,0,0
+				P: "Lcl Scaling", "Lcl Scaling", "", "A",1,1,1
+			}
+		}
+	}
+	ObjectType: "Geometry" {
+		Count: 3
+		PropertyTemplate: "FbxMesh" {
+			Properties70:  {
+				P: "Color", "ColorRGB", "Color", "",0.8,0.8,0.8
+			}
+		}
+	}
+	ObjectType: "Material" {
+		Count: 3
+		PropertyTemplate: "FbxSurfaceLambert" {
+			Properties70:  {
+				P: "ShadingModel", "KString", "", "", "Lambert"
+				P: "DiffuseColor", "Color", "", "A",0.8,0.8,0.8
+			}
+		}
+	}
+	ObjectType: "Texture" {
+		Count: 3
+		PropertyTemplate: "FbxFileTexture" {
+			Properties70:  {
+				P: "Texture alpha", "Number", "", "A",1
+			}
+		}
+	}
+	ObjectType: "Video" {
+		Count: 3
+		PropertyTemplate: "FbxVideo" {
+			Properties70:  {
+				P: "Width", "int", "Integer", "",0
+			}
+		}
+	}
+}
+Objects:  {
+	Model: 71000001, "Model::c_ember_core", "Mesh" {
+		Version: 232
+		Properties70:  {
+			P: "RotationActive", "bool", "", "",1
+			P: "InheritType", "enum", "", "",1
+			P: "Lcl Translation", "Lcl Translation", "", "A",51.5625,5.6250,50.6250
+			P: "RotationPivot", "Vector3D", "Vector", "",0.0000,0.0000,0.0000
+			P: "Lcl Rotation", "Lcl Rotation", "", "A",0.0000,16.0000,0.0000
+			P: "RotationOrder", "enum", "", "",0
+		}
+		Shading: Y
+		Culling: "CullingOff"
+	}
+	Model: 71000003, "Model::c_ember_front_scatter", "Mesh" {
+		Version: 232
+		Properties70:  {
+			P: "RotationActive", "bool", "", "",1
+			P: "InheritType", "enum", "", "",1
+			P: "Lcl Translation", "Lcl Translation", "", "A",45.3125,4.0625,61.2500
+			P: "RotationPivot", "Vector3D", "Vector", "",0.0000,0.0000,0.0000
+			P: "Lcl Rotation", "Lcl Rotation", "", "A",-4.0000,14.0000,3.0000
+			P: "RotationOrder", "enum", "", "",0
+		}
+		Shading: Y
+		Culling: "CullingOff"
+	}
+	Model: 71000005, "Model::c_ember_right_scatter", "Mesh" {
+		Version: 232
+		Properties70:  {
+			P: "RotationActive", "bool", "", "",1
+			P: "InheritType", "enum", "", "",1
+			P: "Lcl Translation", "Lcl Translation", "", "A",69.0625,3.4375,56.8750
+			P: "RotationPivot", "Vector3D", "Vector", "",0.0000,0.0000,-0.0000
+			P: "Lcl Rotation", "Lcl Rotation", "", "A",-3.0000,40.0000,-2.0000
+			P: "RotationOrder", "enum", "", "",0
+		}
+		Shading: Y
+		Culling: "CullingOff"
+	}
+	Geometry: 71000002, "Geometry::c_ember_core", "Mesh" {
+		Vertices: *24 {
+			a: 7.8125,5.6250,6.8750,7.8125,5.6250,-6.8750,7.8125,-5.6250,6.8750,7.8125,-5.6250,-6.8750,-7.8125,5.6250,-6.8750,-7.8125,5.6250,6.8750,-7.8125,-5.6250,-6.8750,-7.8125,-5.6250,6.8750
+		}
+		PolygonVertexIndex: *24 {
+			a: 3,6,4,-2,2,3,1,-1,7,2,0,-6,6,7,5,-5,5,0,1,-5,6,3,2,-8
+		}
+		GeometryVersion: 124
+		LayerElementNormal: 0 {
+			Version: 101
+			Name: ""
+			MappingInformationType: "ByPolygon"
+			ReferenceInformationType: "Direct"
+			Normals: *18 {
+				a: 0,0,-1,1,0,0,0,0,1,-1,0,0,0,1,0,0,-1,0
+			}
+		}
+		LayerElementUV: 0 {
+			Version: 101
+			Name: ""
+			MappingInformationType: "ByPolygonVertex"
+			ReferenceInformationType: "Direct"
+			UV: *48 {
+				a: 0.0,1.0,1.0,1.0,1.0,0.0,0.0,0.0,1.0,1.0,1.0,0.0,0.0,0.0,0.0,1.0,1.0,0.0,0.0,0.0,0.0,1.0,1.0,1.0,0.0,0.0,0.0,1.0,1.0,1.0,1.0,0.0,0.0,1.0,1.0,1.0,1.0,0.0,0.0,0.0,0.0,1.0,1.0,1.0,1.0,0.0,0.0,0.0
+			}
+		}
+		LayerElementMaterial: 0 {
+			Version: 101
+			Name: ""
+			MappingInformationType: "AllSame"
+			ReferenceInformationType: "IndexToDirect"
+			Materials: *1 {
+				a: 0
+			}
+		}
+		Layer: 0 {
+			Version: 100
+			LayerElement:  {
+				Type: "LayerElementNormal"
+				TypedIndex: 0
+			}
+			LayerElement:  {
+				Type: "LayerElementMaterial"
+				TypedIndex: 0
+			}
+			LayerElement:  {
+				Type: "LayerElementUV"
+				TypedIndex: 0
+			}
+		}
+	}
+	Geometry: 71000004, "Geometry::c_ember_front_scatter", "Mesh" {
+		Vertices: *24 {
+			a: 5.9375,4.0625,5.6250,5.9375,4.0625,-5.6250,5.9375,-4.0625,5.6250,5.9375,-4.0625,-5.6250,-5.9375,4.0625,-5.6250,-5.9375,4.0625,5.6250,-5.9375,-4.0625,-5.6250,-5.9375,-4.0625,5.6250
+		}
+		PolygonVertexIndex: *24 {
+			a: 3,6,4,-2,2,3,1,-1,7,2,0,-6,6,7,5,-5,5,0,1,-5,6,3,2,-8
+		}
+		GeometryVersion: 124
+		LayerElementNormal: 0 {
+			Version: 101
+			Name: ""
+			MappingInformationType: "ByPolygon"
+			ReferenceInformationType: "Direct"
+			Normals: *18 {
+				a: 0,0,-1,1,0,0,0,0,1,-1,0,0,0,1,0,0,-1,0
+			}
+		}
+		LayerElementUV: 0 {
+			Version: 101
+			Name: ""
+			MappingInformationType: "ByPolygonVertex"
+			ReferenceInformationType: "Direct"
+			UV: *48 {
+				a: 0.0,0.0,0.0,1.0,1.0,1.0,1.0,0.0,1.0,1.0,1.0,0.0,0.0,0.0,0.0,1.0,0.0,1.0,1.0,1.0,1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,0.0,1.0,1.0,1.0,1.0,1.0,1.0,0.0,0.0,0.0,0.0,1.0,1.0,0.0,0.0,0.0,0.0,1.0,1.0,1.0
+			}
+		}
+		LayerElementMaterial: 0 {
+			Version: 101
+			Name: ""
+			MappingInformationType: "AllSame"
+			ReferenceInformationType: "IndexToDirect"
+			Materials: *1 {
+				a: 0
+			}
+		}
+		Layer: 0 {
+			Version: 100
+			LayerElement:  {
+				Type: "LayerElementNormal"
+				TypedIndex: 0
+			}
+			LayerElement:  {
+				Type: "LayerElementMaterial"
+				TypedIndex: 0
+			}
+			LayerElement:  {
+				Type: "LayerElementUV"
+				TypedIndex: 0
+			}
+		}
+	}
+	Geometry: 71000006, "Geometry::c_ember_right_scatter", "Mesh" {
+		Vertices: *24 {
+			a: 4.6875,3.4375,5.0000,4.6875,3.4375,-5.0000,4.6875,-3.4375,5.0000,4.6875,-3.4375,-5.0000,-4.6875,3.4375,-5.0000,-4.6875,3.4375,5.0000,-4.6875,-3.4375,-5.0000,-4.6875,-3.4375,5.0000
+		}
+		PolygonVertexIndex: *24 {
+			a: 3,6,4,-2,2,3,1,-1,7,2,0,-6,6,7,5,-5,5,0,1,-5,6,3,2,-8
+		}
+		GeometryVersion: 124
+		LayerElementNormal: 0 {
+			Version: 101
+			Name: ""
+			MappingInformationType: "ByPolygon"
+			ReferenceInformationType: "Direct"
+			Normals: *18 {
+				a: 0,0,-1,1,0,0,0,0,1,-1,0,0,0,1,0,0,-1,0
+			}
+		}
+		LayerElementUV: 0 {
+			Version: 101
+			Name: ""
+			MappingInformationType: "ByPolygonVertex"
+			ReferenceInformationType: "Direct"
+			UV: *48 {
+				a: 1.0,1.0,1.0,0.0,0.0,0.0,0.0,1.0,0.0,1.0,1.0,1.0,1.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0,1.0,1.0,1.0,0.0,1.0,0.0,0.0,0.0,0.0,1.0,1.0,1.0,0.0,1.0,1.0,1.0,1.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0,1.0,1.0,1.0,0.0
+			}
+		}
+		LayerElementMaterial: 0 {
+			Version: 101
+			Name: ""
+			MappingInformationType: "AllSame"
+			ReferenceInformationType: "IndexToDirect"
+			Materials: *1 {
+				a: 0
+			}
+		}
+		Layer: 0 {
+			Version: 100
+			LayerElement:  {
+				Type: "LayerElementNormal"
+				TypedIndex: 0
+			}
+			LayerElement:  {
+				Type: "LayerElementMaterial"
+				TypedIndex: 0
+			}
+			LayerElement:  {
+				Type: "LayerElementUV"
+				TypedIndex: 0
+			}
+		}
+	}
+	Material: 76000001, "Material::asado_charcoal_ember.png", "" {
+		Version: 102
+		ShadingModel: "lambert"
+		Properties70:  {
+			P: "DiffuseColor", "Color", "", "A",0.8,0.8,0.8
+		}
+	}
+	Texture: 76000002, "Texture::asado_charcoal_ember.png", "" {
+		Type: "TextureVideoClip"
+		Version: 202
+		Properties70:  {
+			P: "UVSet", "KString", "", "", "default"
+		}
+		FileName: "asado_charcoal_ember.png"
+		RelativeFilename: "asado_charcoal_ember.png"
+	}
+	Video: 76000003, "Video::asado_charcoal_ember.png", "Clip" {
+		Type: "Clip"
+		Properties70:  {
+			P: "Path", "KString", "XRefUrl", "", "asado_charcoal_ember.png"
+		}
+		Filename: "asado_charcoal_ember.png"
+	}
+	Material: 76000011, "Material::asado_charcoal_hotcore.png", "" {
+		Version: 102
+		ShadingModel: "lambert"
+		Properties70:  {
+			P: "DiffuseColor", "Color", "", "A",0.8,0.8,0.8
+		}
+	}
+	Texture: 76000012, "Texture::asado_charcoal_hotcore.png", "" {
+		Type: "TextureVideoClip"
+		Version: 202
+		Properties70:  {
+			P: "UVSet", "KString", "", "", "default"
+		}
+		FileName: "asado_charcoal_hotcore.png"
+		RelativeFilename: "asado_charcoal_hotcore.png"
+	}
+	Video: 76000013, "Video::asado_charcoal_hotcore.png", "Clip" {
+		Type: "Clip"
+		Properties70:  {
+			P: "Path", "KString", "XRefUrl", "", "asado_charcoal_hotcore.png"
+		}
+		Filename: "asado_charcoal_hotcore.png"
+	}
+	Material: 76000021, "Material::asado_charcoal_crust.png", "" {
+		Version: 102
+		ShadingModel: "lambert"
+		Properties70:  {
+			P: "DiffuseColor", "Color", "", "A",0.8,0.8,0.8
+		}
+	}
+	Texture: 76000022, "Texture::asado_charcoal_crust.png", "" {
+		Type: "TextureVideoClip"
+		Version: 202
+		Properties70:  {
+			P: "UVSet", "KString", "", "", "default"
+		}
+		FileName: "asado_charcoal_crust.png"
+		RelativeFilename: "asado_charcoal_crust.png"
+	}
+	Video: 76000023, "Video::asado_charcoal_crust.png", "Clip" {
+		Type: "Clip"
+		Properties70:  {
+			P: "Path", "KString", "XRefUrl", "", "asado_charcoal_crust.png"
+		}
+		Filename: "asado_charcoal_crust.png"
+	}
+}
+Connections:  {
+	C: "OO",71000001,0
+	C: "OO",71000002,71000001
+	C: "OO",76000011,71000001
+	C: "OO",71000003,0
+	C: "OO",71000004,71000003
+	C: "OO",76000001,71000003
+	C: "OO",71000005,0
+	C: "OO",71000006,71000005
+	C: "OO",76000021,71000005
+	C: "OP",76000002,76000001,"DiffuseColor"
+	C: "OO",76000003,76000002
+	C: "OP",76000012,76000011,"DiffuseColor"
+	C: "OO",76000013,76000012
+	C: "OP",76000022,76000021,"DiffuseColor"
+	C: "OO",76000023,76000022
+}
+Takes:  {
+	Current: ""
+}

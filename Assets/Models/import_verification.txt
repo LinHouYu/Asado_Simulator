@@ -1,0 +1,13 @@
+=== MODEL VERIFICATION REPORT ===
+[ASSET] Assets/Models/Charcoal_Embers/Charcoal_Embers_Stage1.fbx | Meshes: 0 | Vertices: 0 | Triangles: 0 | Children: 0
+[ASSET] Assets/Models/Charcoal_Embers/Charcoal_Embers_Stage2.fbx | Meshes: 0 | Vertices: 0 | Triangles: 0 | Children: 0
+[ASSET] Assets/Models/Charcoal_Embers/Charcoal_Embers_Stage3.fbx | Meshes: 0 | Vertices: 0 | Triangles: 0 | Children: 0
+[ASSET] Assets/Models/Charcoal_Shovel/iron_charcoal_shovel.fbx | Meshes: 0 | Vertices: 0 | Triangles: 0 | Children: 0
+[ASSET] Assets/Models/Charcoal_Shovel/loaded_charcoal_shovel.fbx | Meshes: 0 | Vertices: 0 | Triangles: 0 | Children: 0
+[ASSET] Assets/Models/Roasting_Fork/barbecue_roasting_fork.fbx | Meshes: 0 | Vertices: 0 | Triangles: 0 | Children: 0
+[ASSET] Assets/Models/Charcoal_Embers/Charcoal_Embers_Stage1.obj | Meshes: 1 | Vertices: 168 | Triangles: 84 | Children: 1
+[ASSET] Assets/Models/Charcoal_Embers/Charcoal_Embers_Stage2.obj | Meshes: 1 | Vertices: 120 | Triangles: 60 | Children: 1
+[ASSET] Assets/Models/Charcoal_Embers/Charcoal_Embers_Stage3.obj | Meshes: 1 | Vertices: 72 | Triangles: 36 | Children: 1
+[ASSET] Assets/Models/Charcoal_Shovel/iron_charcoal_shovel.obj | Meshes: 1 | Vertices: 216 | Triangles: 108 | Children: 1
+[ASSET] Assets/Models/Charcoal_Shovel/loaded_charcoal_shovel.obj | Meshes: 1 | Vertices: 384 | Triangles: 192 | Children: 1
+[ASSET] Assets/Models/Roasting_Fork/barbecue_roasting_fork.obj | Meshes: 1 | Vertices: 286 | Triangles: 144 | Children: 1

@@ -31,6 +31,11 @@ namespace AsadoSimulator.UI
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         public static void AutoBootstrap()
         {
+            var activeScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
+            if (activeScene != null && string.Equals(activeScene.name, "Menu", StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
             BuildModernUI();
         }
 

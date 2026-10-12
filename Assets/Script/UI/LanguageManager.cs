@@ -40,6 +40,16 @@ namespace AsadoSimulator.UI
             { "btn_back", new Dictionary<GameLanguage, string> { { GameLanguage.Chinese, "返回" }, { GameLanguage.Spanish, "Volver" }, { GameLanguage.English, "Back" } } },
             { "btn_close", new Dictionary<GameLanguage, string> { { GameLanguage.Chinese, "关闭" }, { GameLanguage.Spanish, "Cerrar" }, { GameLanguage.English, "Close" } } },
 
+            // 主菜单 (Main Menu)
+            { "menu_game_title", new Dictionary<GameLanguage, string> { { GameLanguage.Chinese, "ASADO SIMULATOR" }, { GameLanguage.Spanish, "ASADO SIMULATOR" }, { GameLanguage.English, "ASADO SIMULATOR" } } },
+            { "menu_subtitle", new Dictionary<GameLanguage, string> { { GameLanguage.Chinese, "阿根廷烤肉模拟器" }, { GameLanguage.Spanish, "Simulador de Asado Tradicional" }, { GameLanguage.English, "Traditional Argentine BBQ" } } },
+            { "menu_start", new Dictionary<GameLanguage, string> { { GameLanguage.Chinese, "开始游戏" }, { GameLanguage.Spanish, "Iniciar Juego" }, { GameLanguage.English, "Start Game" } } },
+            { "menu_settings", new Dictionary<GameLanguage, string> { { GameLanguage.Chinese, "游戏设置" }, { GameLanguage.Spanish, "Ajustes" }, { GameLanguage.English, "Settings" } } },
+            { "menu_quit", new Dictionary<GameLanguage, string> { { GameLanguage.Chinese, "退出游戏" }, { GameLanguage.Spanish, "Salir" }, { GameLanguage.English, "Quit Game" } } },
+            { "lang_chinese", new Dictionary<GameLanguage, string> { { GameLanguage.Chinese, "🇨🇳 简体中文" }, { GameLanguage.Spanish, "🇨🇳 Chino (ZH)" }, { GameLanguage.English, "🇨🇳 Chinese" } } },
+            { "lang_spanish", new Dictionary<GameLanguage, string> { { GameLanguage.Chinese, "🇦🇷 Español" }, { GameLanguage.Spanish, "🇦🇷 Español" }, { GameLanguage.English, "🇦🇷 Spanish" } } },
+            { "lang_english", new Dictionary<GameLanguage, string> { { GameLanguage.Chinese, "🇬🇧 English" }, { GameLanguage.Spanish, "🇬🇧 English" }, { GameLanguage.English, "🇬🇧 English" } } },
+
             // 暂停菜单
             { "pause_title", new Dictionary<GameLanguage, string> { { GameLanguage.Chinese, "游戏暂停" }, { GameLanguage.Spanish, "Juego Pausado" }, { GameLanguage.English, "Game Paused" } } },
             { "pause_resume", new Dictionary<GameLanguage, string> { { GameLanguage.Chinese, "继续游戏" }, { GameLanguage.Spanish, "Continuar" }, { GameLanguage.English, "Resume" } } },
@@ -142,6 +152,27 @@ namespace AsadoSimulator.UI
             OnLanguageChanged?.Invoke(currentLanguage);
         }
 
+        public static LanguageManager EnsureInstance()
+        {
+            if (Instance != null) return Instance;
+            var found = UnityEngine.Object.FindAnyObjectByType<LanguageManager>();
+            if (found != null)
+            {
+                Instance = found;
+                return Instance;
+            }
+            GameObject go = new GameObject("[LanguageManager]");
+            Instance = go.AddComponent<LanguageManager>();
+            UnityEngine.Object.DontDestroyOnLoad(go);
+            return Instance;
+        }
+
+        public static void ChangeLanguage(GameLanguage newLang)
+        {
+            var mgr = EnsureInstance();
+            mgr.SetLanguage(newLang);
+        }
+
         /// <summary>
         /// 获取当前语言对应的本地化文本
         /// </summary>
@@ -163,7 +194,20 @@ namespace AsadoSimulator.UI
 
         public static string T(string key)
         {
-            return Instance != null ? Instance.GetText(key) : key;
+            if (Instance != null)
+            {
+                return Instance.GetText(key);
+            }
+
+            // 即使尚未初始化实例，也自动从 PlayerPrefs 读取用户偏好并直接查询静态字典，绝不输出原生 key
+            int savedLang = PlayerPrefs.GetInt(PrefKey, (int)GameLanguage.Chinese);
+            GameLanguage lang = (GameLanguage)Mathf.Clamp(savedLang, 0, 2);
+            if (StringTable.TryGetValue(key, out var dict))
+            {
+                if (dict.TryGetValue(lang, out string val)) return val;
+                if (dict.TryGetValue(GameLanguage.Chinese, out string defVal)) return defVal;
+            }
+            return key;
         }
     }
 }

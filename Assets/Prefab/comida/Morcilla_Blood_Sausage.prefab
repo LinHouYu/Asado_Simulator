@@ -65,8 +65,16 @@ PrefabInstance:
       value: Morcilla_Blood_Sausage
       objectReference: {fileID: 0}
     - target: {fileID: 919132149155446097, guid: b46bf4d78d5ad304d8f34a03e1e26dc6, type: 3}
+      propertyPath: m_Layer
+      value: 8
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: b46bf4d78d5ad304d8f34a03e1e26dc6, type: 3}
       propertyPath: m_TagString
       value: Grabbable
+      objectReference: {fileID: 0}
+    - target: {fileID: 8164078558771037576, guid: b46bf4d78d5ad304d8f34a03e1e26dc6, type: 3}
+      propertyPath: m_Layer
+      value: 8
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -84,6 +92,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: b46bf4d78d5ad304d8f34a03e1e26dc6, type: 3}
       insertIndex: -1
       addedObject: {fileID: 2353422484243280964}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: b46bf4d78d5ad304d8f34a03e1e26dc6, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: -5690703730574115850}
   m_SourcePrefab: {fileID: 100100000, guid: b46bf4d78d5ad304d8f34a03e1e26dc6, type: 3}
 --- !u!1 &5093844639222468849 stripped
 GameObject:
@@ -176,11 +187,16 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AsadoSimulator.Cooking.Meat
   cookProgress: 0
   cookSpeed: 0.05
+  isCarneAsado: 0
   meatRenderer: {fileID: 0}
   rawColor: {r: 0.85, g: 0.22, b: 0.22, a: 1}
   cookedColor: {r: 0.55, g: 0.3, b: 0.1, a: 1}
   burntColor: {r: 0.12, g: 0.12, b: 0.12, a: 1}
   usePropertyBlock: 1
+  turnIntoCharcoalWhenBurnt: 1
+  charcoalHumorLabel: "\U0001F480 \u70AD\u5316\u5B8C\u6210\uFF01\u5DF2\u83B7\u5F97\u4F18\u8D28\u8089\u70AD
+    (\u53EF\u6295\u5165\u706B\u76C6\u71C3\u70E7)"
+  autoCreateUIIfMissing: 1
   cookSlider: {fileID: 0}
   sliderCanvas: {fileID: 0}
   autoHideUI: 1
@@ -193,3 +209,19 @@ MonoBehaviour:
   onBurnt:
     m_PersistentCalls:
       m_Calls: []
+--- !u!114 &-5690703730574115850
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5093844639222468849}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0b0f60f93d18cf949b9d1c51b2f4cfea, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ItemHighlight
+  normalLayer: 8
+  hoverLayer: 9
+  grabbedLayer: 9
+  includeChildren: 1
